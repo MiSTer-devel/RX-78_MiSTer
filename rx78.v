@@ -5,8 +5,8 @@ module rx78(
   input vclk,
   input cen,
 
-  output [7:0] h,
-  output [7:0] v,
+  output [8:0] h,
+  output [8:0] v,
   output hs,
   output vs,
   output hb,
@@ -23,6 +23,8 @@ wire [7:0] zdo;
 wire [7:0] rom_q, ext_q, ram_q, vram_q;
 reg [7:0] vram_bank;
 reg [7:0] io_q;
+wire [12:0] gfx_vaddr, gfx_raddr;
+wire [7:0] gfx_vdata, gfx_rdata;
 
 assign px = vclk;
 
@@ -59,7 +61,10 @@ rom rom(
   .clk(clk),
   .ce_n(~rom_en),
   .addr(zaddr[12:0]),
-  .q(rom_q)
+  .q(rom_q),
+
+  .iaddr(gfx_raddr),
+  .idata(gfx_rdata)
 );
 
 // 32k ext ram
@@ -83,13 +88,16 @@ dpram #(.addr_width(14), .data_width(8)) ram(
 );
 
 // 8k vram
+wire [12:0] vram_addr = { vram_bank[2:0], zaddr[12:0] };
 dpram #(.addr_width(13), .data_width(8)) vram(
   .clk(clk),
-  .addr(zaddr[12:0]),
+  .addr(vram_addr),
   .din(zdo),
   .q(vram_q),
   .wr_n(zwr),
-  .ce_n(~vram_en)
+  .ce_n(~vram_en),
+  .vaddr(gfx_vaddr),
+  .vdata(gfx_vdata)
 );
 
 // vblank interrupt
@@ -125,6 +133,16 @@ video video(
   .vb(vb),
   .hcount(h),
   .vcount(v)
+);
+
+gfx gfx(
+  .clk(clk),
+  .h(h),
+  .v(v),
+  .gfx_vaddr(gfx_vaddr),
+  .gfx_rdata(gfx_vdata),
+  .gfx_raddr(gfx_raddr),
+  .gfx_rdata(gfx_rdata)
 );
 
 endmodule
