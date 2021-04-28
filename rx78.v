@@ -2,6 +2,7 @@
 module rx78(
   input reset,
   input clk,
+  input vclk,
   input cen,
 
   output [7:0] h,
@@ -23,8 +24,9 @@ wire [7:0] rom_q, ext_q, ram_q, vram_q;
 reg [7:0] vram_bank;
 reg [7:0] io_q;
 
-/*
+assign px = vclk;
 
+/*
  0000 - 1FFF : 8K ROM
  2000 - 5FFF : Cartridges
  6000 - AFFF : ext RAM 32k but not fully mapped
@@ -116,7 +118,7 @@ tv80s cpu(
 );
 
 video video(
-  .clk(clk),
+  .clk(vclk),
   .hs(hs),
   .vs(vs),
   .hb(hb),

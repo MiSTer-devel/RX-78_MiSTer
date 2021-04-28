@@ -105,7 +105,8 @@ int main(int argc, char** argv, char** env) {
     rx->reset = cycles < 1000;
 
     rx->clk = cycles % 2;
-    rx->cen = cycles % 8;
+    rx->vclk = cycles % 4 == 0;
+    rx->cen = cycles % 8 == 0;
     rx->eval();
 
     if (dirty) {
@@ -134,7 +135,7 @@ int main(int argc, char** argv, char** env) {
         setPixel(canvas, px, py, c);
       }
 
-      if (px == 310 && py == 265) dirty = true;
+      if (px == 341 && py == 276) dirty = true; // <=== fix
     }
 
     if (cycles % 1'000'000 == 0) {

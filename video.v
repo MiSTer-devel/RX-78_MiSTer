@@ -9,9 +9,8 @@ module video(
   output reg [8:0] vcount
 );
 
-//  screen.set_size(192, 184);
-//  screen.set_visarea(0, 192-1, 0, 184-1);
-/* guess: generic NTSC video timing at 256x224, system runs at 192x184, suppose with some border area to compensate */
+// Mame:
+// guess: generic NTSC video timing at 256x224, system runs at 192x184, suppose with some border area to compensate
 
 initial begin
   hs <= 1'b1;
