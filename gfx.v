@@ -16,6 +16,7 @@ module gfx(
   output reg [7:0] blue
 );
 
+assign gfx_vaddr = 'h2c0 + v[8:3] * 24 + h[8:3];
 wire [2:0] hbit = h[2:0];
 
 wire [3:0] fg_pen = {

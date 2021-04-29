@@ -20,7 +20,7 @@ module rx78(
 wire zwr, ziorq;
 wire [15:0] zaddr;
 wire [7:0] zdo;
-wire [7:0] rom_q, ext_q, ram_q;
+wire [7:0] rom_q, ext_q, ram_q, cart_q;
 reg [7:0] vram_rd_bank, vram_wr_bank;
 reg [7:0] io_q;
 wire [12:0] gfx_vaddr, gfx_raddr;
@@ -46,7 +46,7 @@ wire io_en = ~ziorq;
 
 reg [7:0] p1, p2, p3, p4, p5, p6;
 
-wire [7:0] zdi = io_en ? io_q : rom_q | ext_q | ram_q | vram_q;
+wire [7:0] zdi = io_en ? io_q : rom_q | ext_q | cart_q | ram_q | vram_q;
 
 // I/O
 always @(posedge clk) begin
@@ -75,6 +75,14 @@ rom rom(
 
   .addr2(gfx_raddr),
   .q2(gfx_rdata)
+);
+
+// 16k cartride
+cart cart(
+  .clk(clk),
+  .ce_n(~cart_en),
+  .addr(zaddr[13:0]),
+  .q(cart_q)
 );
 
 // 32k ext ram

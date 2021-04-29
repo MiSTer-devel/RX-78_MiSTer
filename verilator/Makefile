@@ -12,3 +12,4 @@ build:
 
 rom:
 	hexdump -v -e '1/1 "%02X" "\n"' ipl.rom > rom.mem
+	hexdump -v -e '1/1 "%02X" "\n"' bs-basic.bin > basic.mem
