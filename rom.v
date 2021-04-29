@@ -5,9 +5,8 @@ module rom(
   input [12:0] addr,
   output [7:0] q,
 
-  input [12:0] iaddr,
-  input [7:0] idata,
-  input iload
+  input [12:0] addr2,
+  output reg [7:0] q2
 );
 
 reg [7:0] data;
@@ -21,7 +20,6 @@ always @(posedge clk)
   data <= mem[addr];
 
 always @(posedge clk)
-  if (iload)
-    mem[iaddr] <= idata;
+  q2 <= mem[addr2];
 
 endmodule
