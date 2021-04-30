@@ -11,8 +11,8 @@ bool running = true;
 SDL_Window* window;
 SDL_Surface* screen;
 SDL_Surface* canvas;
-int width = 240;
-int height = 240;
+int width = 341;
+int height = 276;
 
 void setPixel(SDL_Surface* dst, int x, int y, int color) {
   *((Uint32*)(dst->pixels) + x + y * dst->w) = color;
@@ -104,9 +104,9 @@ int main(int argc, char** argv, char** env) {
 
     rx->reset = cycles < 1000;
 
-    rx->clk = cycles % 2;
-    rx->vclk = cycles % 4 == 0;
-    rx->cen = cycles % 8 == 0;
+    rx->clk = !rx->clk;
+    rx->vclk = cycles % 4 == 0;;
+    //rx->cen = cycles % 8 == 0;
     rx->eval();
 
     if (dirty) {
@@ -132,7 +132,7 @@ int main(int argc, char** argv, char** env) {
 
       if (px >= 0 && px < width && py >= 0 && py < height) {
         int c = rx->red << 16 | rx->green << 8 | rx->blue;
-        setPixel(canvas, px, py, c);
+        setPixel(canvas, px, py, !(rx->vb || rx->hb) ? c : 0x330000);
       }
 
       if (px == 341 && py == 276) dirty = true; // <=== fix

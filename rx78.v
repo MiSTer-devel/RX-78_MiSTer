@@ -23,8 +23,8 @@ wire [7:0] zdo;
 wire [7:0] rom_q, ext_q, ram_q, cart_q;
 reg [7:0] vram_rd_bank, vram_wr_bank;
 reg [7:0] io_q;
-wire [12:0] gfx_vaddr, gfx_raddr;
-wire [7:0] gfx_vdata, gfx_rdata;
+wire [12:0] gfx_vaddr;
+wire [7:0] gfx_vdata;
 reg [7:0] mask;
 
 assign px = vclk;
@@ -34,7 +34,7 @@ assign px = vclk;
  2000 - 5FFF : Cartridges
  6000 - AFFF : ext RAM 32k but not fully mapped
  D000 - EBFF : RAM 16k but not fully mapped because of VRAM
- EC00 - FFFF : VRAM 8k bank - is VRAM 6x8k?
+ EC00 - FFFF : VRAM 8k bank
 */
 
 wire rom_en = zaddr < 16'h2000;
@@ -46,7 +46,7 @@ wire io_en = ~ziorq;
 
 reg [7:0] p1, p2, p3, p4, p5, p6;
 
-wire [7:0] zdi = io_en ? io_q : rom_q | ext_q | cart_q | ram_q | vram_q;
+wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q | ram_q | vram_q);
 
 // I/O
 always @(posedge clk) begin
@@ -71,10 +71,7 @@ rom rom(
   .clk(clk),
   .ce_n(~rom_en),
   .addr(zaddr[12:0]),
-  .q(rom_q),
-
-  .addr2(gfx_raddr),
-  .q2(gfx_rdata)
+  .q(rom_q)
 );
 
 // 16k cartride
@@ -109,7 +106,7 @@ reg [7:0] bg1, bg2, bg3, fg1, fg2, fg3;
 reg [5:0] vchip_en = zwr ? vram_rd_bank : vram_wr_bank;
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
-wire [7:0] vram_q = vram_en ? v1q | v2q | v3q | v4q | v5q | v6q : 8'd0; // ?
+wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'd0;
 
 // vram
 dpram #(.addr_width(13), .data_width(8)) vram1(
@@ -187,7 +184,7 @@ tv80s cpu(
   .reset_n(~reset),
   .clk(clk),
   .wait_n(1'b1),
-  .int_n(~zint),
+  .int_n(zint),
   .nmi_n(1'b1),
   .busrq_n(1'b1),
   .m1_n(),
@@ -223,8 +220,6 @@ gfx gfx(
   .p1(p1), .p2(p2), .p3(p3),
   .p4(p4), .p5(p5), .p6(p6),
   .mask(mask),
-  // .gfx_raddr(gfx_raddr),
-  // .gfx_rdata(gfx_rdata),
   .red(red),
   .green(green),
   .blue(blue)

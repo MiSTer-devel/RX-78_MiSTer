@@ -18,21 +18,21 @@ initial begin
 end
 
 always @(posedge clk) begin
-  hcount <= hcount + 1'b1;
+  hcount <= hcount + 9'd1;
   case (hcount)
     0: hb <= 1'b0;
     256: hb <= 1'b1;
     274: hs <= 1'b0;
     299: hs <= 1'b1;
     341: begin
-      vcount <= vcount + 9'b1;
+      vcount <= vcount + 9'd1;
       hcount <= 9'b0;
       case (vcount)
         224: vb <= 1'b1;
         242: vs <= 1'b0;
         245: vs <= 1'b1;
         276: begin
-          vcount <= 9'b0;
+          vcount <= 9'd0;
           vb <= 1'b0;
         end
       endcase
