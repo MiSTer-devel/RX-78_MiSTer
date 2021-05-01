@@ -33,7 +33,7 @@ assign px = vclk;
  0000 - 1FFF : 8K ROM
  2000 - 5FFF : Cartridges
  6000 - AFFF : ext RAM 32k but not fully mapped
- D000 - EBFF : RAM 16k
+ B000 - EBFF : RAM 16k
  EC00 - FFFF : VRAM 8k bank
  - is full RAM accessible when bank = 0?
 */
@@ -41,7 +41,7 @@ assign px = vclk;
 wire rom_en = zaddr < 16'h2000;
 wire cart_en = zaddr >= 16'h2000 && zaddr < 16'h6000;
 wire ext_en = zaddr >= 16'h6000 && zaddr < 16'hb000;
-wire ram_en = zaddr >= 16'hb000 && zaddr < 16'hec00;
+wire ram_en = ziorq && zaddr >= 16'hb000 && zaddr < 16'hec00;
 wire vram_en = zaddr >= 16'hec00;
 wire io_en = ~ziorq;
 
@@ -51,11 +51,12 @@ wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q1 | cart_q2 | ram_q | vra
 
 // I/O
 always @(posedge clk) begin
-  io_q <= 8'd0;
+  io_q <= 8'hff;
   if (io_en) begin
     case (zaddr[7:0])
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
+      8'hf4: io_q <= 8'h0;
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
       8'hf7: if (~zwr) p3 <= zdo;
@@ -100,10 +101,10 @@ dpram #(.addr_width(15), .data_width(8)) ext_ram(
   .ce_n(~ext_en)
 );
 
-// 16k ram
+// 16k ram / todo: fix address without subtracting, two 8k chips?
 dpram #(.addr_width(14), .data_width(8)) ram(
   .clk(clk),
-  .addr(zaddr[13:0]),
+  .addr(zaddr - 16'hb000),
   .din(zdo),
   .q(ram_q),
   .wr_n(zwr),
@@ -111,7 +112,7 @@ dpram #(.addr_width(14), .data_width(8)) ram(
 );
 
 reg [7:0] bg1, bg2, bg3, fg1, fg2, fg3;
-wire [5:0] vchip_en = vram_en ? zwr ? vram_rd_bank : vram_wr_bank : 6'h3f;
+wire [5:0] vchip_en = vram_en ? (zwr ? vram_rd_bank : vram_wr_bank) : 6'h3f;
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
 wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'd0;

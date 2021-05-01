@@ -13,6 +13,10 @@ module gfx(
   output reg [7:0] blue
 );
 
+// todo:
+// - fix decoding
+// - add border
+
 assign gfx_vaddr = 'hec0 + v * 'd24 + h[8:3];
 wire [2:0] hbit = h[2:0] - 3'd1;
 
