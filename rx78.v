@@ -20,7 +20,7 @@ module rx78(
 wire zwr, ziorq;
 wire [15:0] zaddr;
 wire [7:0] zdo;
-wire [7:0] rom_q, ext_q, ram_q, cart_q;
+wire [7:0] rom_q, ext_q, ram_q, cart_q1, cart_q2;
 reg [7:0] vram_rd_bank, vram_wr_bank;
 reg [7:0] io_q;
 wire [12:0] gfx_vaddr;
@@ -33,8 +33,9 @@ assign px = vclk;
  0000 - 1FFF : 8K ROM
  2000 - 5FFF : Cartridges
  6000 - AFFF : ext RAM 32k but not fully mapped
- D000 - EBFF : RAM 16k but not fully mapped because of VRAM
+ D000 - EBFF : RAM 16k
  EC00 - FFFF : VRAM 8k bank
+ - is full RAM accessible when bank = 0?
 */
 
 wire rom_en = zaddr < 16'h2000;
@@ -46,7 +47,7 @@ wire io_en = ~ziorq;
 
 reg [7:0] p1, p2, p3, p4, p5, p6;
 
-wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q | ram_q | vram_q);
+wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q1 | cart_q2 | ram_q | vram_q);
 
 // I/O
 always @(posedge clk) begin
@@ -74,12 +75,19 @@ rom rom(
   .q(rom_q)
 );
 
-// 16k cartride
-cart cart(
+// 16k cartride (2x8k)
+cart #("basic1.mem") cart1(
   .clk(clk),
-  .ce_n(~cart_en),
-  .addr(zaddr[13:0]),
-  .q(cart_q)
+  .ce_n(~cart_en | zaddr[14]),
+  .addr(zaddr[12:0]),
+  .q(cart_q1)
+);
+
+cart #("basic2.mem") cart2(
+  .clk(clk),
+  .ce_n(~cart_en | ~zaddr[14]),
+  .addr(zaddr[12:0]),
+  .q(cart_q2)
 );
 
 // 32k ext ram
@@ -103,7 +111,7 @@ dpram #(.addr_width(14), .data_width(8)) ram(
 );
 
 reg [7:0] bg1, bg2, bg3, fg1, fg2, fg3;
-reg [5:0] vchip_en = zwr ? vram_rd_bank : vram_wr_bank;
+wire [5:0] vchip_en = vram_en ? zwr ? vram_rd_bank : vram_wr_bank : 6'h3f;
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
 wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'd0;
@@ -211,7 +219,6 @@ video video(
 );
 
 gfx gfx(
-  .clk(clk),
   .h(h),
   .v(v),
   .gfx_vaddr(gfx_vaddr),

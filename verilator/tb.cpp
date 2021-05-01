@@ -132,7 +132,7 @@ int main(int argc, char** argv, char** env) {
 
       if (px >= 0 && px < width && py >= 0 && py < height) {
         int c = rx->red << 16 | rx->green << 8 | rx->blue;
-        setPixel(canvas, px, py, !(rx->vb || rx->hb) ? c : 0x330000);
+        setPixel(canvas, px, py, !(rx->vb || rx->hb) ? px < 192 && py < 184 ? c : 0x003300 : 0x330000);
       }
 
       if (px == 341 && py == 276) dirty = true; // <=== fix

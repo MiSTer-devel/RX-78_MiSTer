@@ -1,6 +1,5 @@
 
 module gfx(
-  input clk,
   input [8:0] h,
   input [8:0] v,
   output reg [12:0] gfx_vaddr,
@@ -14,8 +13,8 @@ module gfx(
   output reg [7:0] blue
 );
 
-assign gfx_vaddr = 'h2c0 + 'hc00 + v * 'd24 + h[8:3];
-wire [2:0] hbit = h[2:0];
+assign gfx_vaddr = 'hec0 + v * 'd24 + h[8:3];
+wire [2:0] hbit = h[2:0] - 3'd1;
 
 wire [2:0] fg_pen = {
   mask[0] ? fg1[hbit] : 0,

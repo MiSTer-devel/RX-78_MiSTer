@@ -1,5 +1,5 @@
 
-module cart(
+module cart #(parameter part) (
   input clk,
   input ce_n,
   input [13:0] addr,
@@ -7,9 +7,11 @@ module cart(
 );
 
 reg [7:0] data;
-reg [7:0] mem[16383:0];
+reg [7:0] mem[8191:0];
 
-initial $readmemh("basic.mem", mem);
+`ifdef LOAD_CART
+  initial $readmemh(part, mem);
+`endif
 
 assign q = ~ce_n ? data : 0;
 
