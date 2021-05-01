@@ -25,7 +25,7 @@ reg [7:0] vram_rd_bank, vram_wr_bank;
 reg [7:0] io_q;
 wire [12:0] gfx_vaddr;
 wire [7:0] gfx_vdata;
-reg [7:0] mask;
+reg [7:0] mask, cmask, bgcolor;
 
 assign px = vclk;
 
@@ -63,6 +63,8 @@ always @(posedge clk) begin
       8'hf8: if (~zwr) p4 <= zdo;
       8'hf9: if (~zwr) p5 <= zdo;
       8'hfa: if (~zwr) p6 <= zdo;
+      8'hfb: if (~zwr) cmask <= { 5'b0, zdo[1], zdo[2], zdo[0] };
+      8'hfc: if (~zwr) bgcolor <= zdo; // bg color
       8'hfe: if (~zwr) mask <= zdo;
     endcase
   end
@@ -111,8 +113,8 @@ dpram #(.addr_width(14), .data_width(8)) ram(
   .ce_n(~ram_en)
 );
 
-reg [7:0] bg1, bg2, bg3, fg1, fg2, fg3;
-wire [5:0] vchip_en = vram_en ? (zwr ? vram_rd_bank : vram_wr_bank) : 6'h3f;
+wire [7:0] bg1, bg2, bg3, fg1, fg2, fg3;
+wire [5:0] vchip_en = vram_en ? (zwr ? ~vram_rd_bank : ~vram_wr_bank) : 6'h3f;
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
 wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'd0;
@@ -228,6 +230,8 @@ gfx gfx(
   .p1(p1), .p2(p2), .p3(p3),
   .p4(p4), .p5(p5), .p6(p6),
   .mask(mask),
+  .cmask(cmask),
+  .bgc(bgcolor),
   .red(red),
   .green(green),
   .blue(blue)
