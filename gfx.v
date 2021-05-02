@@ -43,6 +43,7 @@ wire [7:0] c2m = c2 & cmask;
 wire [7:0] c1r = |c1m ? c1m : c1;
 wire [7:0] c2r = |c2m ? c2m : c2;
 
+/*
 wire [7:0] r0 = bgc[4] ? bgc[0] ? 8'hff : 8'h7f : 0;
 wire [7:0] r1 = c1r[4] ? c1r[0] ? 8'hff : 8'h7f : 0;
 wire [7:0] r2 = c2r[4] ? c2r[0] ? 8'hff : 8'h7f : 0;
@@ -52,9 +53,19 @@ wire [7:0] g2 = c2r[5] ? c2r[1] ? 8'hff : 8'h7f : 0;
 wire [7:0] b0 = bgc[6] ? bgc[2] ? 8'hff : 8'h7f : 0;
 wire [7:0] b1 = c1r[6] ? c1r[2] ? 8'hff : 8'h7f : 0;
 wire [7:0] b2 = c2r[6] ? c2r[2] ? 8'hff : 8'h7f : 0;
+*/
+wire [7:0] r0 = bgc[4] & bgc[0] ? 8'hff : bgc[0] ? 8'h7f : 0;
+wire [7:0] r1 = c1r[4] & c1r[0] ? 8'hff : c1r[0] ? 8'h7f : 0;
+wire [7:0] r2 = c2r[4] & c2r[0] ? 8'hff : c2r[0] ? 8'h7f : 0;
+wire [7:0] g0 = bgc[5] & bgc[1] ? 8'hff : bgc[1] ? 8'h7f : 0;
+wire [7:0] g1 = c1r[5] & c1r[1] ? 8'hff : c1r[1] ? 8'h7f : 0;
+wire [7:0] g2 = c2r[5] & c2r[1] ? 8'hff : c2r[1] ? 8'h7f : 0;
+wire [7:0] b0 = bgc[6] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 0;
+wire [7:0] b1 = c1r[6] & c1r[2] ? 8'hff : c1r[2] ? 8'h7f : 0;
+wire [7:0] b2 = c2r[6] & c2r[2] ? 8'hff : c2r[2] ? 8'h7f : 0;
 
 assign red = |r2 ? r2 : |r1 ? r1 : r0;
-assign green = |r2 ? g2 : |r1 ? g1 : g0;
-assign blue = |r2 ? b2 : |r1 ? b1 : b0;
+assign green = |g2 ? g2 : |g1 ? g1 : g0;
+assign blue = |b2 ? b2 : |b1 ? b1 : b0;
 
 endmodule

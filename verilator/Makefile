@@ -11,8 +11,17 @@ build:
 	cp -R obj_dir ~
 
 rom:
-	hexdump -v -e '1/1 "%02X" "\n"' ipl.rom > rom.mem
-	split -b8192 bs-basic.bin tmp
-	hexdump -v -e '1/1 "%02X" "\n"' tmpaa > basic1.mem
-	hexdump -v -e '1/1 "%02X" "\n"' tmpab > basic2.mem
-	rm tmpaa tmpab
+	hexdump -v -e '1/1 "%02X" "\n"' roms/ipl.rom > roms/rom.mem
+	
+basic:
+	split -b8192 roms/bs-basic.bin roms/tmp
+	hexdump -v -e '1/1 "%02X" "\n"' roms/tmpaa > roms/basic1.mem
+	hexdump -v -e '1/1 "%02X" "\n"' roms/tmpab > roms/basic2.mem
+	rm roms/tmp*
+
+gundam:
+	split -b8192 roms/gundam.bin roms/tmp
+	hexdump -v -e '1/1 "%02X" "\n"' roms/tmpaa > roms/gundam1.mem
+	hexdump -v -e '1/1 "%02X" "\n"' roms/tmpab > roms/gundam2.mem
+	rm roms/tmp*
+

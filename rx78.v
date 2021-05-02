@@ -79,14 +79,14 @@ rom rom(
 );
 
 // 16k cartride (2x8k)
-cart #("basic1.mem") cart1(
+cart #("roms/gundam1.mem") cart1(
   .clk(clk),
   .ce_n(~cart_en | zaddr[14]),
   .addr(zaddr[12:0]),
   .q(cart_q1)
 );
 
-cart #("basic2.mem") cart2(
+cart #("roms/gundam2.mem") cart2(
   .clk(clk),
   .ce_n(~cart_en | ~zaddr[14]),
   .addr(zaddr[12:0]),

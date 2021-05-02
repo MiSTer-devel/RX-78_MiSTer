@@ -12,7 +12,7 @@ module rom(
 reg [7:0] data;
 reg [7:0] mem[8191:0];
 
-initial $readmemh("rom.mem", mem);
+initial $readmemh("roms/rom.mem", mem);
 
 assign q = ~ce_n ? data : 0;
 
