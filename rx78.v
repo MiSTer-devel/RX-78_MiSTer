@@ -13,12 +13,10 @@ module rx78(
   // keyboard
   input [10:0] ps2_key,
   
-  
   // joystick input
   input [31:0] joy1,  
   input [31:0] joy2,
- 
-  
+   
   output [8:0] h,
   output [8:0] v,
   output hs,
@@ -64,7 +62,15 @@ wire io_en = ~ziorq & zm1;
 reg [7:0] p1, p2, p3, p4, p5, p6;
 
 //wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q1 | cart_q2 | ram_q | vram_q);
-wire [7:0] zdi = io_en ? io_q : rom_en ? rom_q :  ext_en ?  ext_q : cart_1_en ? cart_q1 : cart_2_en ? cart_q2  : ram_en ?  ram_q : vram_en ? vram_q: 8'hff;
+
+wire [7:0] zdi =
+  io_en     ? io_q    :
+  rom_en    ? rom_q   :
+  ext_en    ? ext_q   :
+  cart_1_en ? cart_q1 :
+  cart_2_en ? cart_q2 :
+  ram_en    ? ram_q   :
+  vram_en   ? vram_q  : 8'hff;
 
 
 wire [7:0] kb_rows;
@@ -75,12 +81,10 @@ always @(posedge clk) begin
   io_q <= 8'hff;
   if (io_en) begin
     case (zaddr[7:0])
-      //8'h4d: io_q <= 8'h0;
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
-      //8'hf3: if (~zwr) ?
+      //8'hf3: write only, what is it?
       8'hf4: if (~zwr) kb_cols <= zdo; else io_q <= kb_rows;
-      //8'hf4: io_q <= 0;
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
       8'hf7: if (~zwr) p3 <= zdo;
@@ -88,7 +92,7 @@ always @(posedge clk) begin
       8'hf9: if (~zwr) p5 <= zdo;
       8'hfa: if (~zwr) p6 <= zdo;
       8'hfb: if (~zwr) cmask <= { 2'b0,  zdo[0], zdo[2], zdo[1], zdo[0], zdo[2], zdo[1] };
-      8'hfc: if (~zwr) bgcolor <= zdo; // bg color
+      8'hfc: if (~zwr) bgcolor <= zdo;
       8'hfe: if (~zwr) mask <= zdo;
     endcase
   end
@@ -114,7 +118,6 @@ cart cart1(
   .upload_addr(upload_addr[12:0]),
   .upload_data(upload_data)
 );
-
 
 
 cart cart2(
@@ -188,6 +191,7 @@ always @*
     8'd4: read_bank = 8'b11110111;
     8'd5: read_bank = 8'b11101111;
     8'd6: read_bank = 8'b11011111;
+    default: read_bank = 8'b11111111;
   endcase
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;

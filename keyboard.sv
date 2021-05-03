@@ -60,6 +60,10 @@ always @(posedge clk_sys) begin
 	reg old_reset;
 	old_reset <= reset;
 
+	/*
+	@Alan, I don't know what are the
+	correct values here but it won't
+	boot on cart with $ff
 	if(~old_reset & reset) begin
 		keys[0] <= 8'b11111111;
 		keys[1] <= 8'b11111111;
@@ -70,6 +74,7 @@ always @(posedge clk_sys) begin
 		keys[6] <= 8'b11111111;
 		keys[7] <= 8'b11111111;
 	end
+	*/
 
 	if(input_strobe) begin
 		case(code)
