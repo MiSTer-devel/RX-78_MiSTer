@@ -97,6 +97,7 @@ int main(int argc, char** argv, char** env) {
     ifs.seekg(0);
 
     rx->upload = 1;
+    rx->upload_index = 1;
     rx->upload_addr = 0;
 
     int pos = 0;

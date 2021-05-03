@@ -79,7 +79,8 @@ always @(posedge clk) begin
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
       //8'hf3: if (~zwr) ?
-      8'hf4: if (~zwr) kb_cols= zdo; else io_q <= kb_rows;
+      8'hf4: if (~zwr) kb_cols <= zdo; else io_q <= kb_rows;
+      //8'hf4: io_q <= 0;
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
       8'hf7: if (~zwr) p3 <= zdo;
@@ -295,7 +296,7 @@ video video(
 );
 
 gfx gfx(
-  .clk(clk),
+  .clk(vclk),
   .h(h),
   .v(v),
   .gfx_vaddr(gfx_vaddr),

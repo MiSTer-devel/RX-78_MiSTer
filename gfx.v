@@ -20,13 +20,6 @@ module gfx(
 always @(posedge clk)
 	gfx_vaddr = 'hec0 + v * 'd24 + h[8:3];
 
-// color: 00 01 11 3x3x3 = 27
-// 01 01 01
-// 11 11 00
-// 00 00 01
-// 11 11 01
-
-
 
 wire [2:0] hbit = h[2:0] - 3'd1;
 

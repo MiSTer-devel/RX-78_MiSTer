@@ -29,7 +29,7 @@ reg		  shiftstate = 0;
 
 // Output addressed row to ULA
 always @(*) begin
-	kb_rows<=8'hff;
+	kb_rows<=8'h0;
 	
 	
 	if (addr == 'h30) begin
