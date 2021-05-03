@@ -6,7 +6,7 @@ LDFLAGS := $(shell pkg-config sdl2 --libs)
 
 build:
 	rm -rf obj_dir
-	verilator -Wall -Wno-fatal --top-module rx78 --cc -DLOAD_CART ../rx78.v -y ../tv80 -y .. --exe tb.cpp --trace -CFLAGS '${CFLAGS} -g' -LDFLAGS '${LDFLAGS} -lSDL2_ttf' --public
+	verilator -Wall -Wno-fatal --top-module rx78 --cc -DLOAD_CART ../rtl/rx78.v -y ../rtl/tv80 -y ../rtl --exe tb.cpp --trace -CFLAGS '${CFLAGS} -g' -LDFLAGS '${LDFLAGS} -lSDL2_ttf' --public
 	make -j -C ./obj_dir -f Vrx78.mk Vrx78
 	cp -R obj_dir ~
 

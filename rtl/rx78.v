@@ -35,8 +35,7 @@ wire [7:0] zdo;
 wire [7:0] rom_q, ext_q, ram_q, cart_q1, cart_q2;
 reg [7:0] vram_rd_bank, vram_wr_bank;
 reg [7:0] io_q;
-wire [12:0] gfx_vaddr;
-wire [7:0] gfx_vdata;
+wire [12:0] vdp_addr;
 reg [7:0] mask, cmask, bgcolor;
 
 assign px = vclk;
@@ -205,7 +204,7 @@ dpram #(.addr_width(13), .data_width(8)) vram1(
   .q(v1q),
   .wr_n(zwr),
   .ce_n(vchip_en[0]),
-  .vaddr(gfx_vaddr[12:0]),
+  .vaddr(vdp_addr[12:0]),
   .vdata(fg1)
 );
 
@@ -216,7 +215,7 @@ dpram #(.addr_width(13), .data_width(8)) vram2(
   .q(v2q),
   .wr_n(zwr),
   .ce_n(vchip_en[1]),
-  .vaddr(gfx_vaddr[12:0]),
+  .vaddr(vdp_addr[12:0]),
   .vdata(fg2)
 );
 
@@ -227,7 +226,7 @@ dpram #(.addr_width(13), .data_width(8)) vram3(
   .q(v3q),
   .wr_n(zwr),
   .ce_n(vchip_en[2]),
-  .vaddr(gfx_vaddr[12:0]),
+  .vaddr(vdp_addr[12:0]),
   .vdata(fg3)
 );
 
@@ -238,7 +237,7 @@ dpram #(.addr_width(13), .data_width(8)) vram4(
   .q(v4q),
   .wr_n(zwr),
   .ce_n(vchip_en[3]),
-  .vaddr(gfx_vaddr[12:0]),
+  .vaddr(vdp_addr[12:0]),
   .vdata(bg1)
 );
 
@@ -249,7 +248,7 @@ dpram #(.addr_width(13), .data_width(8)) vram5(
   .q(v5q),
   .wr_n(zwr),
   .ce_n(vchip_en[4]),
-  .vaddr(gfx_vaddr[12:0]),
+  .vaddr(vdp_addr[12:0]),
   .vdata(bg2)
 );
 
@@ -260,7 +259,7 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
   .q(v6q),
   .wr_n(zwr),
   .ce_n(vchip_en[5]),
-  .vaddr(gfx_vaddr[12:0]),
+  .vaddr(vdp_addr[12:0]),
   .vdata(bg3)
 );
 
@@ -299,11 +298,11 @@ video video(
   .vcount(v)
 );
 
-gfx gfx(
+vdp vdp(
   .clk(vclk),
   .h(h),
   .v(v),
-  .gfx_vaddr(gfx_vaddr),
+  .vdp_addr(vdp_addr),
   .fg1(fg1), .fg2(fg2), .fg3(fg3),
   .bg1(bg1), .bg2(bg2), .bg3(bg3),
   .p1(p1), .p2(p2), .p3(p3),

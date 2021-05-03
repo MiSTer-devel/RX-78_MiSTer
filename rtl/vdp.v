@@ -1,10 +1,9 @@
 
-module gfx(
+module vdp(
   input clk,
   input [8:0] h,
   input [8:0] v,
-  output reg [12:0] gfx_vaddr,
-  input [7:0] gfx_vdata,
+  output reg [12:0] vdp_addr,
   input [7:0] fg1, fg2, fg3, // vram fg data
   input [7:0] bg1, bg2, bg3, // vram bg data
   input [7:0] p1, p2, p3, p4, p5, p6, // palette
@@ -18,7 +17,7 @@ module gfx(
 
 
 always @(posedge clk)
-	gfx_vaddr = 'hec0 + v * 'd24 + h[8:3];
+	vdp_addr = 'hec0 + v * 'd24 + h[8:3];
 
 
 wire [2:0] hbit = h[2:0] - 3'd1;
