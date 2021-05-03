@@ -7,6 +7,7 @@ hc_output
 scaler
 hps_isw_handoff
 vip
+roms
 *_sim
 .qsys_edit
 PLLJ_PLLSPE_INFO.txt
@@ -37,4 +38,8 @@ c5_pin_model_dump.txt
 *.xml
 *_netlist
 *.cdf
+**/obj_dir
 **/.DS_Store
+verilator/obj_dir*
+*.mem
+*.mem

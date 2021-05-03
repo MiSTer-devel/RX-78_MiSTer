@@ -5,10 +5,20 @@ module rx78(
   input vclk,
   input cen,
 
+  input [7:0] upload_index,
   input upload,
   input [24:0] upload_addr,
   input [7:0] upload_data,
 
+  // keyboard
+  input [10:0] ps2_key,
+  
+  
+  // joystick input
+  input [31:0] joy1,  
+  input [31:0] joy2,
+ 
+  
   output [8:0] h,
   output [8:0] v,
   output hs,
@@ -53,6 +63,10 @@ reg [7:0] p1, p2, p3, p4, p5, p6;
 
 wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q1 | cart_q2 | ram_q | vram_q);
 
+
+wire [7:0] kb_rows;
+reg [7:0] kb_cols;
+
 // I/O
 always @(posedge clk) begin
   io_q <= 8'hff;
@@ -62,7 +76,7 @@ always @(posedge clk) begin
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
       //8'hf3: if (~zwr) ?
-      8'hf4: io_q <= 8'h0;
+      8'hf4: if (~zwr) kb_cols= zdo; else io_q <= kb_rows;
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
       8'hf7: if (~zwr) p3 <= zdo;
@@ -91,7 +105,7 @@ cart cart1(
   .addr(zaddr[12:0]),
   .q(cart_q1),
 
-  .upload(upload && upload_addr < 25'h2000),
+  .upload((upload_index==1) && upload && upload_addr < 25'h2000),
   .upload_addr(upload_addr[12:0]),
   .upload_data(upload_data)
 );
@@ -102,7 +116,7 @@ cart cart2(
   .addr(zaddr[12:0]),
   .q(cart_q2),
 
-  .upload(upload && upload_addr >= 25'h2000),
+  .upload((upload_index==1) && upload && upload_addr >= 25'h2000),
   .upload_addr(upload_addr[12:0]),
   .upload_data(upload_data)
 );
@@ -236,6 +250,7 @@ video video(
 );
 
 gfx gfx(
+  .clk(clk),
   .h(h),
   .v(v),
   .gfx_vaddr(gfx_vaddr),
@@ -251,4 +266,17 @@ gfx gfx(
   .blue(blue)
 );
 
+
+keyboard kb(
+.clk_sys(clk),
+.reset(reset),
+.ps2_key(ps2_key),
+.addr(kb_cols),
+.kb_rows(kb_rows),
+.Fn(),
+.modif(),
+.joy1(joy1),
+.joy2(joy2)
+
+);
 endmodule

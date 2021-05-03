@@ -1,5 +1,6 @@
 
 module gfx(
+  input clk,
   input [8:0] h,
   input [8:0] v,
   output reg [12:0] gfx_vaddr,
@@ -15,7 +16,8 @@ module gfx(
   output reg [7:0] blue
 );
 
-assign gfx_vaddr = 'hec0 + v * 'd24 + h[8:3];
+always @(posedge clk)
+	gfx_vaddr = 'hec0 + v * 'd24 + h[8:3];
 wire [2:0] hbit = h[2:0] - 3'd1;
 
 wire [2:0] fg_pen = {
@@ -49,8 +51,11 @@ wire [7:0] b0 = bgc[6] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 0;
 wire [7:0] b1 = c1r[6] & c1r[2] ? 8'hff : c1r[2] ? 8'h7f : 0;
 wire [7:0] b2 = c2r[6] & c2r[2] ? 8'hff : c2r[2] ? 8'h7f : 0;
 
-assign red   = |r2 ? r2 : |r1 ? r1 : r0;
-assign green = |g2 ? g2 : |g1 ? g1 : g0;
-assign blue  = |b2 ? b2 : |b1 ? b1 : b0;
+always @(posedge clk)
+begin
+    red   = |r2 ? r2 : |r1 ? r1 : r0;
+    green = |g2 ? g2 : |g1 ? g1 : g0;
+    blue  = |b2 ? b2 : |b1 ? b1 : b0;
+end
 
 endmodule
