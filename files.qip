@@ -6,5 +6,6 @@ set_global_assignment -name VERILOG_FILE rx78.v
 set_global_assignment -name VERILOG_FILE video.v
 set_global_assignment -name QIP_FILE tv80/TV80.qip
 set_global_assignment -name SDC_FILE RX78.sdc
+set_global_assignment -name VHDL_FILE rtl/dualpram.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE keyboard.sv
 set_global_assignment -name SYSTEMVERILOG_FILE RX78.sv

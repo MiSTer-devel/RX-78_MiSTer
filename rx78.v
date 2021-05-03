@@ -54,6 +54,8 @@ assign px = vclk;
 
 wire rom_en = ~io_en && zaddr < 16'h2000;
 wire cart_en = ~io_en && zaddr >= 16'h2000 && zaddr < 16'h6000;
+wire cart_1_en = cart_en && ~zaddr[14];
+wire cart_2_en = cart_en && zaddr[14];
 wire ext_en = ~io_en && zaddr >= 16'h6000 && zaddr < 16'hb000;
 wire ram_en = ~io_en && zaddr >= 16'hb000 && zaddr < 16'hec00;
 wire vram_en = ~io_en && zaddr >= 16'hec00;
@@ -61,7 +63,8 @@ wire io_en = ~ziorq & zm1;
 
 reg [7:0] p1, p2, p3, p4, p5, p6;
 
-wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q1 | cart_q2 | ram_q | vram_q);
+//wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q1 | cart_q2 | ram_q | vram_q);
+wire [7:0] zdi = io_en ? io_q : rom_en ? rom_q :  ext_en ?  ext_q : cart_1_en ? cart_q1 : cart_2_en ? cart_q2  : ram_en ?  ram_q : vram_en ? vram_q: 8'hff;
 
 
 wire [7:0] kb_rows;
@@ -99,6 +102,7 @@ rom rom(
 );
 
 // 16k cartride (2x8k)
+
 cart cart1(
   .clk(clk),
   .ce_n(~cart_en | zaddr[14]),
@@ -109,6 +113,8 @@ cart cart1(
   .upload_addr(upload_addr[12:0]),
   .upload_data(upload_data)
 );
+
+
 
 cart cart2(
   .clk(clk),
@@ -121,6 +127,34 @@ cart cart2(
   .upload_data(upload_data)
 );
 
+
+/*
+dualpram #(.addr_width_g(13)) cart1(
+	.clock_a(clk),
+	.address_a(zaddr[12:0]),
+	.enable_a(~(~cart_en | zaddr[14])),
+	.q_a(cart_q1),
+	
+	.clock_b(clk),
+	.wren_b((upload_index==1) && upload && upload_addr < 25'h2000),
+	.address_b(upload_addr[12:0]),
+	.data_b(upload_data)
+);
+
+
+dualpram #(.addr_width_g(13)) cart2(
+	.clock_a(clk),
+	.address_a(zaddr[12:0]),
+	.enable_a(~(~cart_en | ~zaddr[14])),
+	.q_a(cart_q2),
+	
+	.clock_b(clk),
+	.wren_b((upload_index==1) && upload && upload_addr >= 25'h2000),
+	.address_b(upload_addr[12:0]),
+	.data_b(upload_data)
+);
+*/
+		
 // 32k ext ram
 dpram #(.addr_width(15), .data_width(8)) ext_ram(
   .clk(clk),

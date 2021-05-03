@@ -189,6 +189,7 @@ assign AUDIO_MIX = 0;
 
 assign LED_DISK = 0;
 assign LED_POWER = 0;
+assign LED_USER = 0;
 assign BUTTONS = 0;
 
 //////////////////////////////////////////////////////////////////
@@ -255,12 +256,13 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 
 ///////////////////////   CLOCKS   ///////////////////////////////
 
-wire clk_sys,clk_vid;
+wire clk_sys_2,clk_vid;
+wire clk_sys = clk_vid;
 pll pll
 (
 	.refclk(CLK_50M),
 	.rst(0),
-	.outclk_0(clk_sys),
+	.outclk_0(clk_sys_2),
 	.outclk_1(clk_vid)
 );
 
@@ -268,7 +270,6 @@ wire reset = RESET | status[0] | buttons[1];
 
 //////////////////////////////////////////////////////////////////
 
-wire [1:0] col = status[4:3];
 
 wire HBlank;
 wire HSync;
@@ -303,7 +304,7 @@ rx78 rx78(
 	.upload_index(ioctl_index),
 	.upload_addr(ioctl_addr),
 	.upload_data(ioctl_dout),
-	.upload(ioctl_wr & rom_download)
+	.upload(ioctl_wr & ioctl_download)
 
 
 );

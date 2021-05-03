@@ -1,44 +1,3 @@
-//
-// HT1080Z for MiSTer Keyboard module
-//
-// Copyright (c) 2009-2011 Mike Stirling
-// Copyright (c) 2015-2017 Sorgelig
-//
-// All rights reserved
-//
-// Redistribution and use in source and synthezised forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
-//   this list of conditions and the following disclaimer.
-//
-// * Redistributions in synthesized form must reproduce the above copyright
-//   notice, this list of conditions and the following disclaimer in the
-//   documentation and/or other materials provided with the distribution.
-//
-// * Neither the name of the author nor the names of other contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written agreement from the author.
-//
-// * License is granted for non-commercial use only.  A fee may not be charged
-//   for redistributions as source code or in synthesized/hardware form without
-//   specific prior written agreement from the author.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-// THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-//
-// PS/2 scancode to TRS-80 matrix conversion
-//
 
 
 
@@ -73,84 +32,15 @@ always @(*) begin
 	kb_rows<=8'hff;
 	
 	
-	//if (joystick_1_button) kb_rows[1]<=0;
-	//if (joystick_2_button) kb_rows[0]<=0;
-	//kb_rows[7]<=joystick_hilo;
+	if (addr == 'h30) begin
+		kb_rows <= keys[0] | keys[1] | keys[2] | keys[3] | keys[4] | keys[5] | keys[6] | keys[7]; // need up to 15 here
+	end
+	else if (addr >= 1 && addr <=15) begin
+		kb_rows <= keys[addr-1];
+	end else begin
+		kb_rows <= 0;
+	end
 	
-
-	if (keys[0][0]==1'b0) if (addr[0] == 1'b0) kb_rows[0] <= 1'b0;
-	if (keys[0][1]==1'b0) if (addr[1] == 1'b0) kb_rows[0] <= 1'b0;
-	if (keys[0][2]==1'b0) if (addr[2] == 1'b0) kb_rows[0] <= 1'b0;
-	if (keys[0][3]==1'b0) if (addr[3] == 1'b0) kb_rows[0] <= 1'b0;
-	if (keys[0][4]==1'b0) if (addr[4] == 1'b0) kb_rows[0] <= 1'b0;
-	if (keys[0][5]==1'b0) if (addr[5] == 1'b0) kb_rows[0] <= 1'b0;
-	if (keys[0][6]==1'b0) if (addr[6] == 1'b0) kb_rows[0] <= 1'b0;
-	if (keys[0][7]==1'b0) if (addr[7] == 1'b0) kb_rows[0] <= 1'b0;
-
-	if (keys[1][0]==1'b0) if (addr[0] == 1'b0) kb_rows[1] <= 1'b0;
-	if (keys[1][1]==1'b0) if (addr[1] == 1'b0) kb_rows[1] <= 1'b0;
-	if (keys[1][2]==1'b0) if (addr[2] == 1'b0) kb_rows[1] <= 1'b0;
-	if (keys[1][3]==1'b0) if (addr[3] == 1'b0) kb_rows[1] <= 1'b0;
-	if (keys[1][4]==1'b0) if (addr[4] == 1'b0) kb_rows[1] <= 1'b0;
-	if (keys[1][5]==1'b0) if (addr[5] == 1'b0) kb_rows[1] <= 1'b0;
-	if (keys[1][6]==1'b0) if (addr[6] == 1'b0) kb_rows[1] <= 1'b0;
-	if (keys[1][7]==1'b0) if (addr[7] == 1'b0) kb_rows[1] <= 1'b0;
-
-	if (keys[2][0]==1'b0) if (addr[0] == 1'b0) kb_rows[2] <= 1'b0;
-	if (keys[2][1]==1'b0) if (addr[1] == 1'b0) kb_rows[2] <= 1'b0;
-	if (keys[2][2]==1'b0) if (addr[2] == 1'b0) kb_rows[2] <= 1'b0;
-	if (keys[2][3]==1'b0) if (addr[3] == 1'b0) kb_rows[2] <= 1'b0;
-	if (keys[2][4]==1'b0) if (addr[4] == 1'b0) kb_rows[2] <= 1'b0;
-	if (keys[2][5]==1'b0) if (addr[5] == 1'b0) kb_rows[2] <= 1'b0;
-	if (keys[2][6]==1'b0) if (addr[6] == 1'b0) kb_rows[2] <= 1'b0;
-	if (keys[2][7]==1'b0) if (addr[7] == 1'b0) kb_rows[2] <= 1'b0;
-
-	if (keys[3][0]==1'b0) if (addr[0] == 1'b0) kb_rows[3] <= 1'b0;
-	if (keys[3][1]==1'b0) if (addr[1] == 1'b0) kb_rows[3] <= 1'b0;
-	if (keys[3][2]==1'b0) if (addr[2] == 1'b0) kb_rows[3] <= 1'b0;
-	if (keys[3][3]==1'b0) if (addr[3] == 1'b0) kb_rows[3] <= 1'b0;
-	if (keys[3][4]==1'b0) if (addr[4] == 1'b0) kb_rows[3] <= 1'b0;
-	if (keys[3][5]==1'b0) if (addr[5] == 1'b0) kb_rows[3] <= 1'b0;
-	if (keys[3][6]==1'b0) if (addr[6] == 1'b0) kb_rows[3] <= 1'b0;
-	if (keys[3][7]==1'b0) if (addr[7] == 1'b0) kb_rows[3] <= 1'b0;
-
-	if (keys[4][0]==1'b0) if (addr[0] == 1'b0) kb_rows[4] <= 1'b0;
-	if (keys[4][1]==1'b0) if (addr[1] == 1'b0) kb_rows[4] <= 1'b0;
-	if (keys[4][2]==1'b0) if (addr[2] == 1'b0) kb_rows[4] <= 1'b0;
-	if (keys[4][3]==1'b0) if (addr[3] == 1'b0) kb_rows[4] <= 1'b0;
-	if (keys[4][4]==1'b0) if (addr[4] == 1'b0) kb_rows[4] <= 1'b0;
-	if (keys[4][5]==1'b0) if (addr[5] == 1'b0) kb_rows[4] <= 1'b0;
-	if (keys[4][6]==1'b0) if (addr[6] == 1'b0) kb_rows[4] <= 1'b0;
-	if (keys[4][7]==1'b0) if (addr[7] == 1'b0) kb_rows[4] <= 1'b0;
-
-	if (keys[5][0]==1'b0) if (addr[0] == 1'b0) kb_rows[5] <= 1'b0;
-	if (keys[5][1]==1'b0) if (addr[1] == 1'b0) kb_rows[5] <= 1'b0;
-	if (keys[5][2]==1'b0) if (addr[2] == 1'b0) kb_rows[5] <= 1'b0;
-	if (keys[5][3]==1'b0) if (addr[3] == 1'b0) kb_rows[5] <= 1'b0;
-	if (keys[5][4]==1'b0) if (addr[4] == 1'b0) kb_rows[5] <= 1'b0;
-	if (keys[5][5]==1'b0) if (addr[5] == 1'b0) kb_rows[5] <= 1'b0;
-	if (keys[5][6]==1'b0) if (addr[6] == 1'b0) kb_rows[5] <= 1'b0;
-	if (keys[5][7]==1'b0) if (addr[7] == 1'b0) kb_rows[5] <= 1'b0;
-
-	if (keys[6][0]==1'b0) if (addr[0] == 1'b0) kb_rows[6] <= 1'b0;
-	if (keys[6][1]==1'b0) if (addr[1] == 1'b0) kb_rows[6] <= 1'b0;
-	if (keys[6][2]==1'b0) if (addr[2] == 1'b0) kb_rows[6] <= 1'b0;
-	if (keys[6][3]==1'b0) if (addr[3] == 1'b0) kb_rows[6] <= 1'b0;
-	if (keys[6][4]==1'b0) if (addr[4] == 1'b0) kb_rows[6] <= 1'b0;
-	if (keys[6][5]==1'b0) if (addr[5] == 1'b0) kb_rows[6] <= 1'b0;
-	if (keys[6][6]==1'b0) if (addr[6] == 1'b0) kb_rows[6] <= 1'b0;
-	if (keys[6][7]==1'b0) if (addr[7] == 1'b0) kb_rows[6] <= 1'b0;
-	
-/*
-	if (keys[7][0]==1'b0) if (addr[0] == 1'b0) kb_rows[7] <= 1'b0;
-	if (keys[7][1]==1'b0) if (addr[1] == 1'b0) kb_rows[7] <= 1'b0;
-	if (keys[7][2]==1'b0) if (addr[2] == 1'b0) kb_rows[7] <= 1'b0;
-	if (keys[7][3]==1'b0) if (addr[3] == 1'b0) kb_rows[7] <= 1'b0;
-	if (keys[7][4]==1'b0) if (addr[4] == 1'b0) kb_rows[7] <= 1'b0;
-	if (keys[7][5]==1'b0) if (addr[5] == 1'b0) kb_rows[7] <= 1'b0;
-	if (keys[7][6]==1'b0) if (addr[6] == 1'b0) kb_rows[7] <= 1'b0;
-	if (keys[7][7]==1'b0) if (addr[7] == 1'b0) kb_rows[7] <= 1'b0;
-*/
 
 end
 /*
