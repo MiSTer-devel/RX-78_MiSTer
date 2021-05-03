@@ -5,6 +5,10 @@ module rx78(
   input vclk,
   input cen,
 
+  input upload,
+  input [24:0] upload_addr,
+  input [7:0] upload_data,
+
   output [8:0] h,
   output [8:0] v,
   output hs,
@@ -17,7 +21,7 @@ module rx78(
   output [7:0] blue
 );
 
-wire zwr, ziorq;
+wire zwr, ziorq, zm1;
 wire [15:0] zaddr;
 wire [7:0] zdo;
 wire [7:0] rom_q, ext_q, ram_q, cart_q1, cart_q2;
@@ -38,12 +42,12 @@ assign px = vclk;
  - is full RAM accessible when bank = 0?
 */
 
-wire rom_en = zaddr < 16'h2000;
-wire cart_en = zaddr >= 16'h2000 && zaddr < 16'h6000;
-wire ext_en = zaddr >= 16'h6000 && zaddr < 16'hb000;
-wire ram_en = ziorq && zaddr >= 16'hb000 && zaddr < 16'hec00;
-wire vram_en = zaddr >= 16'hec00;
-wire io_en = ~ziorq;
+wire rom_en = ~io_en && zaddr < 16'h2000;
+wire cart_en = ~io_en && zaddr >= 16'h2000 && zaddr < 16'h6000;
+wire ext_en = ~io_en && zaddr >= 16'h6000 && zaddr < 16'hb000;
+wire ram_en = ~io_en && zaddr >= 16'hb000 && zaddr < 16'hec00;
+wire vram_en = ~io_en && zaddr >= 16'hec00;
+wire io_en = ~ziorq & zm1;
 
 reg [7:0] p1, p2, p3, p4, p5, p6;
 
@@ -54,8 +58,10 @@ always @(posedge clk) begin
   io_q <= 8'hff;
   if (io_en) begin
     case (zaddr[7:0])
+      //8'h4d: io_q <= 8'h0;
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
+      //8'hf3: if (~zwr) ?
       8'hf4: io_q <= 8'h0;
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
@@ -79,18 +85,26 @@ rom rom(
 );
 
 // 16k cartride (2x8k)
-cart #("roms/gundam1.mem") cart1(
+cart cart1(
   .clk(clk),
   .ce_n(~cart_en | zaddr[14]),
   .addr(zaddr[12:0]),
-  .q(cart_q1)
+  .q(cart_q1),
+
+  .upload(upload && upload_addr < 25'h2000),
+  .upload_addr(upload_addr[12:0]),
+  .upload_data(upload_data)
 );
 
-cart #("roms/gundam2.mem") cart2(
+cart cart2(
   .clk(clk),
   .ce_n(~cart_en | ~zaddr[14]),
   .addr(zaddr[12:0]),
-  .q(cart_q2)
+  .q(cart_q2),
+
+  .upload(upload && upload_addr >= 25'h2000),
+  .upload_addr(upload_addr[12:0]),
+  .upload_data(upload_data)
 );
 
 // 32k ext ram
@@ -198,7 +212,7 @@ tv80s cpu(
   .int_n(zint),
   .nmi_n(1'b1),
   .busrq_n(1'b1),
-  .m1_n(),
+  .m1_n(zm1),
   .mreq_n(),
   .iorq_n(ziorq),
   .rd_n(),

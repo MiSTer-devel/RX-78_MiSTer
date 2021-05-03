@@ -15,9 +15,6 @@ module gfx(
   output reg [7:0] blue
 );
 
-// todo:
-// - add border 32x20
-
 assign gfx_vaddr = 'hec0 + v * 'd24 + h[8:3];
 wire [2:0] hbit = h[2:0] - 3'd1;
 
@@ -36,11 +33,11 @@ wire [2:0] bg_pen = {
 wire [7:0] c1 = (bg_pen[0] ? p4 : 0) | (bg_pen[1] ? p5 : 0) | (bg_pen[2] ? p6 : 0);
 wire [7:0] c2 = (fg_pen[0] ? p1 : 0) | (fg_pen[1] ? p2 : 0) | (fg_pen[2] ? p3 : 0);
 
-wire [7:0] c1m = c1 & cmask;
-wire [7:0] c2m = c2 & cmask;
+// wire [7:0] c1m = c1 & cmask;
+// wire [7:0] c2m = c2 & cmask;
 
-wire [7:0] c1r = |c1m ? c1m : c1;
-wire [7:0] c2r = |c2m ? c2m : c2;
+wire [7:0] c1r = c1; //|c1m ? c1m : c1;
+wire [7:0] c2r = c2; //|c2m ? c2m : c2;
 
 wire [7:0] r0 = bgc[4] & bgc[0] ? 8'hff : bgc[0] ? 8'h7f : 0;
 wire [7:0] r1 = c1r[4] & c1r[0] ? 8'hff : c1r[0] ? 8'h7f : 0;

@@ -23,16 +23,18 @@ int main(int argc, char** argv, char** env) {
   int stop_arg = 10;
   int trace_arg = -1;
   int len_arg = 3;
+  char *cart_arg = NULL;
 
   static struct option long_options[] = {
     {"trace", no_argument, 0, 't'},
     {"stop", no_argument, 0, 's'},
     {"length", no_argument, 0, 'l'},
+    {"cart", no_argument, 0, 'c'},
     {NULL, 0, NULL, 0}
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "s:t:l:", long_options, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "s:t:l:c:", long_options, NULL)) != -1) {
     switch (opt) {
       case 's':
         stop_arg = atoi(optarg);
@@ -42,6 +44,9 @@ int main(int argc, char** argv, char** env) {
         break;
       case 'l':
         len_arg = atoi(optarg);
+        break;
+      case 'c':
+        cart_arg = optarg;
         break;
     }
   }
@@ -81,6 +86,48 @@ int main(int argc, char** argv, char** env) {
   tfp->open("dump.vcd");
   #endif
 
+  if (cart_arg != NULL) {
+
+    printf("loading cart file\n");
+
+    std::ifstream ifs(cart_arg, std::ios::in | std::ios::binary | std::ios::ate);
+    if (!ifs) return -1;
+
+    int rom_size = ifs.tellg();
+    ifs.seekg(0);
+
+    rx->upload = 1;
+    rx->upload_addr = 0;
+
+    int pos = 0;
+    while (pos < rom_size) {
+
+      if (rx->clk) {
+        rx->upload_data = ifs.get();
+        rx->upload_addr = pos;
+        pos++;
+      }
+
+      #if VM_TRACE
+      if (start_trace >= 0 && hcycles >= start_trace) tracing = true;
+      if (hcycles > stop_trace) tracing = false;
+      if (tfp && tracing) tfp->dump((int)cycles);
+      #endif
+
+      if (cycles % 1'000'000 == 0) hcycles++;
+      if (hcycles > stop_sim) running = false;
+
+      rx->clk = !rx->clk;
+      rx->eval();
+      cycles++;
+
+    }
+
+    rx->upload = 0;
+    printf("ROM loaded\n");
+
+  }
+
   TTF_Font *font = NULL;
   TTF_Init();
   font = TTF_OpenFont("arial.ttf", 8);
@@ -102,7 +149,7 @@ int main(int argc, char** argv, char** env) {
     if (cycles % 1'000'000 == 0) hcycles++;
     if (hcycles > stop_sim) running = false;
 
-    rx->reset = cycles < 1000;
+    rx->reset = hcycles < 2;
 
     rx->clk = !rx->clk;
     rx->vclk = cycles % 4 == 0;;
