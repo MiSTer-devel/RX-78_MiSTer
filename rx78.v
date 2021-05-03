@@ -83,7 +83,7 @@ always @(posedge clk) begin
       8'hf8: if (~zwr) p4 <= zdo;
       8'hf9: if (~zwr) p5 <= zdo;
       8'hfa: if (~zwr) p6 <= zdo;
-      8'hfb: if (~zwr) cmask <= { 5'b0, zdo[1], zdo[2], zdo[0] };
+      8'hfb: if (~zwr) cmask <= { 2'b0,  zdo[0], zdo[2], zdo[1], zdo[0], zdo[2], zdo[1] };
       8'hfc: if (~zwr) bgcolor <= zdo; // bg color
       8'hfe: if (~zwr) mask <= zdo;
     endcase
@@ -142,7 +142,18 @@ dpram #(.addr_width(14), .data_width(8)) ram(
 );
 
 wire [7:0] bg1, bg2, bg3, fg1, fg2, fg3;
-wire [5:0] vchip_en = vram_en ? (zwr ? ~vram_rd_bank : ~vram_wr_bank) : 6'h3f;
+wire [5:0] vchip_en = vram_en ? (zwr ? read_bank : ~vram_wr_bank) : 6'h3f;
+
+reg [7:0] read_bank;
+always @*
+  case (vram_rd_bank)
+    8'd1: read_bank = 8'b11111110;
+    8'd2: read_bank = 8'b11111101;
+    8'd3: read_bank = 8'b11111011;
+    8'd4: read_bank = 8'b11110111;
+    8'd5: read_bank = 8'b11101111;
+    8'd6: read_bank = 8'b11011111;
+  endcase
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
 wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'd0;
