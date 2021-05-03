@@ -2,10 +2,10 @@ set_global_assignment -name VERILOG_FILE rtl/cart.v
 set_global_assignment -name VERILOG_FILE rtl/dpram.v
 set_global_assignment -name VERILOG_FILE rtl/vdp.v
 set_global_assignment -name VERILOG_FILE rtl/rom.v
-set_global_assignment -name VERILOG_FILE rx78.v
+set_global_assignment -name VERILOG_FILE rtl/rx78.v
 set_global_assignment -name VERILOG_FILE rtl/video.v
-set_global_assignment -name QIP_FILE tv80/TV80.qip
-set_global_assignment -name QIP_FILE jt89/jt89_verilog.qip
+set_global_assignment -name QIP_FILE rtl/tv80/TV80.qip
+set_global_assignment -name QIP_FILE rtl/jt89/jt89_verilog.qip
 set_global_assignment -name SDC_FILE RX78.sdc
 #set_global_assignment -name VHDL_FILE rtl/dualpram.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/keyboard.sv
