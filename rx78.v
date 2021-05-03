@@ -209,7 +209,7 @@ tv80s cpu(
   .reset_n(~reset),
   .clk(clk),
   .wait_n(1'b1),
-  .int_n(zint),
+  .int_n(~zint),
   .nmi_n(1'b1),
   .busrq_n(1'b1),
   .m1_n(zm1),
