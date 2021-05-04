@@ -15,12 +15,17 @@ module vdp(
   output [7:0] blue
 );
 
+// 192x184
+// border: 32x20
+
+wire [8:0] hwb = h - 9'd32;
+wire [8:0] vwb = v - 9'd20;
 
 always @(posedge clk)
-	vdp_addr = 'hec0 + v * 'd24 + h[8:3];
+	vdp_addr = 'hec0 + vwb * 'd24 + hwb[8:3];
 
 
-wire [2:0] hbit = h[2:0] - 3'd1;
+wire [2:0] hbit = hwb[2:0] - 3'd1;
 
 wire [2:0] fg_pen = {
   mask[2] & fg3[hbit],
@@ -53,8 +58,9 @@ wire [7:0] b0 = bgc[6] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 0;
 wire [7:0] b1 = c1r[6] & c1r[2] ? 8'hff : c1r[2] ? 8'h7f : 0;
 wire [7:0] b2 = c2r[6] & c2r[2] ? 8'hff : c2r[2] ? 8'h7f : 0;
 
-assign red   = fg_pen ? r2 : bg_pen ? r1 : r0;
-assign green = fg_pen ? g2 : bg_pen ? g1 : g0;
-assign blue  = fg_pen ? b2 : bg_pen ? b1 : b0;
+wire screen = h > 32 && v > 19 && h < 192+32 && v < 184+20;
+assign red   = screen ? fg_pen ? r2 : bg_pen ? r1 : r0 : 0;
+assign green = screen ? fg_pen ? g2 : bg_pen ? g1 : g0 : 0;
+assign blue  = screen ? fg_pen ? b2 : bg_pen ? b1 : b0 : 0;
 
 endmodule
