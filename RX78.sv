@@ -207,8 +207,9 @@ localparam CONF_STR = {
 	"-;",
 	"O89,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"-;",
-	
 	"R0,Reset;",
+	"J,Fire1,Fire2;",
+	"jn,A,B;",
 	"V,v",`BUILD_DATE 
 };
 
