@@ -1,7 +1,9 @@
 
 module rx78(
   input reset,
-  input clk,
+  input clk, // clk_sys
+  input cpu_clk,
+  input snd_clk,
   input vclk,
   input cen,
 
@@ -26,7 +28,8 @@ module rx78(
   output px,
   output [7:0] red,
   output [7:0] green,
-  output [7:0] blue
+  output [7:0] blue,
+  output [10:0] sound
 );
 
 wire zwr, ziorq, zm1;
@@ -43,10 +46,18 @@ assign px = vclk;
 /*
  0000 - 1FFF : 8K ROM
  2000 - 5FFF : Cartridges
- 6000 - AFFF : ext RAM 32k but not fully mapped
+ 6000 - AFFF : ext RAM 32k
  B000 - EBFF : RAM 16k
  EC00 - FFFF : VRAM 8k bank
- - is full RAM accessible when bank = 0?
+ 
+ - is full RAM accessible when bank=0?
+ - color mask is not implemented
+ - p1,p2.. have extra bits, why?
+ - NMI not used?
+ - is there a timer somewhere?
+ 
+ we need a real machine!
+ 
 */
 
 wire rom_en = ~io_en && zaddr < 16'h2000;
@@ -59,8 +70,6 @@ wire vram_en = ~io_en && zaddr >= 16'hec00;
 wire io_en = ~ziorq & zm1;
 
 reg [7:0] p1, p2, p3, p4, p5, p6;
-
-//wire [7:0] zdi = io_en ? io_q : (rom_q | ext_q | cart_q1 | cart_q2 | ram_q | vram_q);
 
 wire [7:0] zdi =
   io_en     ? io_q    :
@@ -270,7 +279,7 @@ always @(posedge clk) vb_latch <= vb;
 
 tv80s cpu(
   .reset_n(~reset),
-  .clk(clk),
+  .clk(cpu_clk),
   .wait_n(1'b1),
   .int_n(~zint),
   .nmi_n(1'b1),
@@ -317,15 +326,26 @@ vdp vdp(
 
 
 keyboard kb(
-.clk_sys(clk),
-.reset(reset),
-.ps2_key(ps2_key),
-.addr(kb_cols),
-.kb_rows(kb_rows),
-.Fn(),
-.modif(),
-.joy1(joy1),
-.joy2(joy2)
-
+  .clk_sys(clk),
+  .reset(reset),
+  .ps2_key(ps2_key),
+  .addr(kb_cols),
+  .kb_rows(kb_rows),
+  .Fn(),
+  .modif(),
+  .joy1(joy1),
+  .joy2(joy2)
 );
+
+wire snd_en = io_en && zaddr[7:0] == 8'hff && ~zwr;
+
+jt89 jt89(
+  .clk(snd_clk),
+  .clk_en(1'b1),
+  .rst(reset),
+  .wr_n(~snd_en),
+  .din(zdo),
+  .sound(sound)
+);
+
 endmodule

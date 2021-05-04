@@ -182,11 +182,6 @@ assign VGA_SL = 0;
 assign VGA_F1 = 0;
 assign VGA_SCALER = 0;
 
-assign AUDIO_S = 0;
-assign AUDIO_L = 0;
-assign AUDIO_R = 0;
-assign AUDIO_MIX = 0;
-
 assign LED_DISK = 0;
 assign LED_POWER = 0;
 assign LED_USER = 0;
@@ -257,15 +252,19 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 
 ///////////////////////   CLOCKS   ///////////////////////////////
 
-wire clk_sys_2,clk_vid;
-wire clk_sys = clk_vid;
+wire clk_sys, clk_vid, cpu_clk;
 pll pll
 (
 	.refclk(CLK_50M),
 	.rst(0),
-	.outclk_0(clk_sys_2),
-	.outclk_1(clk_vid)
+	.outclk_0(clk_sys),
+	.outclk_1(cpu_clk),
+	.outclk_2(clk_vid)
 );
+
+reg snd_clk;
+always @(posedge clk_vid)
+	snd_clk <= ~snd_clk;
 
 wire reset = RESET | status[0] | buttons[1];
 
@@ -279,12 +278,19 @@ wire VSync;
 wire ce_pix;
 wire [7:0] video;
 
+wire [10:0] sound;
+assign AUDIO_S = 1;
+assign AUDIO_L = { sound, 5'd0 };
+assign AUDIO_R = { sound, 5'd0 };
+assign AUDIO_MIX = 3;
 
 
 rx78 rx78(
 	.reset(reset),
-	.clk(clk_vid),
-	.vclk(clk_vid),
+	.clk(clk_sys), // a fast clock for bram
+	.cpu_clk(cpu_clk), // should be 4
+	.snd_clk(snd_clk), // 3.5
+	.vclk(clk_vid), // should be 7
 	.cen(1),
 	.h(),
 	.v(),
@@ -296,6 +302,8 @@ rx78 rx78(
 	.red(VGA_R),
 	.green(VGA_G),
 	.blue(VGA_B),
+	
+	.sound(sound),
 	
    .ps2_key(ps2_key),
 	.joy1(joy1),

@@ -10,9 +10,9 @@ module vdp(
   input [7:0] mask, // mask for vram planes {fg,fg,fg,bg,bg,bg}
   input [7:0] cmask,
   input [7:0] bgc,
-  output reg [7:0] red,
-  output reg [7:0] green,
-  output reg [7:0] blue
+  output [7:0] red,
+  output [7:0] green,
+  output [7:0] blue
 );
 
 
@@ -53,11 +53,8 @@ wire [7:0] b0 = bgc[6] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 0;
 wire [7:0] b1 = c1r[6] & c1r[2] ? 8'hff : c1r[2] ? 8'h7f : 0;
 wire [7:0] b2 = c2r[6] & c2r[2] ? 8'hff : c2r[2] ? 8'h7f : 0;
 
-always @(posedge clk)
-begin
-	red   = fg_pen ? r2 : bg_pen ? r1 : r0;
-	green = fg_pen ? g2 : bg_pen ? g1 : g0;
-	blue  = fg_pen ? b2 : bg_pen ? b1 : b0;
-end
+assign red   = fg_pen ? r2 : bg_pen ? r1 : r0;
+assign green = fg_pen ? g2 : bg_pen ? g1 : g0;
+assign blue  = fg_pen ? b2 : bg_pen ? b1 : b0;
 
 endmodule
