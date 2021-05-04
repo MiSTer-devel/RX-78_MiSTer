@@ -15,8 +15,8 @@ module keyboard
 	input       [7:0] addr,			// bottom 7 address lines from CPU for memory-mapped access
 	output      reg [7:0] kb_rows,	// data lines returned from scanning
 
-	input      [15:0] joy1,
-	input      [15:0] joy2,
+	input      [31:0] joy1,
+	input      [31:0] joy2,
 	
 	output reg [11:1] Fn = 0,
 	output reg  [2:0] modif = 0
@@ -60,21 +60,30 @@ always @(posedge clk_sys) begin
 	reg old_reset;
 	old_reset <= reset;
 
+	// joystick needs to be reset each time
+	keys[9]  <= 8'h00;
+	keys[10] <= 8'h00;
+	keys[11] <= 8'h00;
+	keys[12] <= 8'h00;
+	keys[13] <= 8'h00;
+	keys[14] <= 8'h00;
+
+	
 	/*
 	@Alan, I don't know what are the
 	correct values here but it won't
 	boot on cart with $ff
 	*/
 	if(~old_reset & reset) begin
-		keys[0] <= 8'h00;
-		keys[1] <= 8'h00;
-		keys[2] <= 8'h00;
-		keys[4] <= 8'h00;
-		keys[5] <= 8'h00;
-		keys[6] <=8'h00;
-		keys[7] <= 8'h00;
-		keys[8] <= 8'h00;
-		keys[9] <= 8'h00;
+		keys[0]  <= 8'h00;
+		keys[1]  <= 8'h00;
+		keys[2]  <= 8'h00;
+		keys[4]  <= 8'h00;
+		keys[5]  <= 8'h00;
+		keys[6]  <= 8'h00;
+		keys[7]  <= 8'h00;
+		keys[8]  <= 8'h00;
+		keys[9]  <= 8'h00;
 		keys[10] <= 8'h00;
 		keys[11] <= 8'h00;
 		keys[12] <= 8'h00;

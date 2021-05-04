@@ -61,10 +61,13 @@ assign px = vclk;
 */
 
 wire rom_en = ~io_en && zaddr < 16'h2000;
-wire cart_en = ~io_en && zaddr >= 16'h2000 && zaddr < 16'h6000;
-wire cart_1_en = cart_en && ~zaddr[14];
-wire cart_2_en = cart_en && zaddr[14];
-wire ext_en = ~io_en && zaddr >= 16'h6000 && zaddr < 16'hb000;
+//wire cart_en = ~io_en && zaddr >= 16'h2000 && zaddr < 16'h6000;
+//wire cart_1_en = cart_en && ~zaddr[14];
+//wire cart_2_en = cart_en && zaddr[14];
+
+wire cart_en = ziorq &&zaddr >= 16'h2000 && zaddr < 16'hb000;
+
+//wire ext_en = ~io_en && zaddr >= 16'h6000 && zaddr < 16'hb000;
 wire ram_en = ~io_en && zaddr >= 16'hb000 && zaddr < 16'hec00;
 wire vram_en = ~io_en && zaddr >= 16'hec00;
 wire io_en = ~ziorq & zm1;
@@ -74,9 +77,11 @@ reg [7:0] p1, p2, p3, p4, p5, p6;
 wire [7:0] zdi =
   io_en     ? io_q    :
   rom_en    ? rom_q   :
-  ext_en    ? ext_q   :
-  cart_1_en ? cart_q1 :
-  cart_2_en ? cart_q2 :
+//  ext_en    ? ext_q   :
+//  cart_1_en ? cart_q1 :
+//  cart_2_en ? cart_q2 :
+  cart_en ? cart_q1 :
+
   ram_en    ? ram_q   :
   vram_en   ? vram_q  : 8'hff;
 
@@ -114,8 +119,23 @@ rom rom(
   .q(rom_q)
 );
 
-// 16k cartride (2x8k)
 
+// 32k cart
+wire [15:0] caddr = zaddr - 'h2000;
+cart32  cart32(
+  .clk(clk),
+  .ce_n(~cart_en ),
+  .addr(caddr[14:0] ),
+  .q(cart_q1),
+
+  .upload((upload_index==1) && upload),
+  .upload_addr(upload_addr[14:0]),
+  .upload_data(upload_data)
+  
+);
+
+// 16k cartride (2x8k)
+/*
 cart cart1(
   .clk(clk),
   .ce_n(~cart_en | zaddr[14]),
@@ -134,11 +154,11 @@ cart cart2(
   .addr(zaddr[12:0]),
   .q(cart_q2),
 
-  .upload((upload_index==1) && upload && upload_addr >= 25'h2000),
+  .upload((upload_index==1) && upload && upload_addr >= 25'h2000 && upload_addr < 25'h4000),
   .upload_addr(upload_addr[12:0]),
   .upload_data(upload_data)
 );
-
+*/
 
 /*
 dualpram #(.addr_width_g(13)) cart1(
@@ -161,20 +181,24 @@ dualpram #(.addr_width_g(13)) cart2(
 	.q_a(cart_q2),
 	
 	.clock_b(clk),
-	.wren_b((upload_index==1) && upload && upload_addr >= 25'h2000),
+	.wren_b((upload_index==1) && upload && upload_addr >= 25'h2000 && upload_addr < 25'h4000 ),
 	.address_b(upload_addr[12:0]),
 	.data_b(upload_data)
 );
 */
 		
 // 32k ext ram
+
+wire fillRam = ((upload_index==1) && upload && upload_addr >= 25'h4000);
+wire [24:0] upaddrext = upload_addr - 'h4000;
+
 dpram #(.addr_width(15), .data_width(8)) ext_ram(
   .clk(clk),
-  .addr(zaddr[14:0]),
-  .din(zdo),
+  .addr(fillRam ? upaddrext[14:0] : zaddr[14:0]),
+  .din(fillRam ? upload_data : zdo ),
   .q(ext_q),
-  .wr_n(zwr),
-  .ce_n(~ext_en)
+  .wr_n(zwr & ~fillRam),
+  .ce_n(~ext_en & ~fillRam)
 );
 
 // 16k ram / todo: fix address without subtracting, two 8k chips?

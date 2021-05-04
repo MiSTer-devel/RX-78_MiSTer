@@ -200,6 +200,8 @@ localparam CONF_STR = {
 	"-;",
 	"F1,BIN,Load Cartridge;",
 	"-;",
+	"OA,Swap Joysticks,Off,On;",
+	"-;",
 	"O89,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"-;",
 	"R0,Reset;",
@@ -284,6 +286,9 @@ assign AUDIO_L = { sound, 5'd0 };
 assign AUDIO_R = { sound, 5'd0 };
 assign AUDIO_MIX = 3;
 
+wire [31:0] rx78_joy1 = status[10] ? joy2 : joy1;
+wire [31:0] rx78_joy2 = status[10] ? joy1 : joy2;
+
 
 rx78 rx78(
 	.reset(reset),
@@ -306,8 +311,8 @@ rx78 rx78(
 	.sound(sound),
 	
    .ps2_key(ps2_key),
-	.joy1(joy1),
-	.joy2(joy2),
+	.joy1(rx78_joy1),
+	.joy2(rx78_joy2),
 	
 	
 	.upload_index(ioctl_index),
