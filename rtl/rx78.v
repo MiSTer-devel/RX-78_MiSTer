@@ -29,7 +29,9 @@ module rx78(
   output [7:0] red,
   output [7:0] green,
   output [7:0] blue,
-  output [10:0] sound
+  output [10:0] sound,
+  
+  input ext
 );
 
 wire zwr, ziorq, zm1;
@@ -67,7 +69,7 @@ wire rom_en = ~io_en && zaddr < 16'h2000;
 
 wire cart_en = ziorq &&zaddr >= 16'h2000 && zaddr < 16'hb000;
 
-//wire ext_en = ~io_en && zaddr >= 16'h6000 && zaddr < 16'hb000;
+wire ext_en = ~io_en && zaddr >= 16'h6000 && zaddr < 16'hb000;
 wire ram_en = ~io_en && zaddr >= 16'hb000 && zaddr < 16'hec00;
 wire vram_en = ~io_en && zaddr >= 16'hec00;
 wire io_en = ~ziorq & zm1;
@@ -77,7 +79,7 @@ reg [7:0] p1, p2, p3, p4, p5, p6;
 wire [7:0] zdi =
   io_en     ? io_q    :
   rom_en    ? rom_q   :
-//  ext_en    ? ext_q   :
+  (ext && ext_en )   ? ext_q   :
 //  cart_1_en ? cart_q1 :
 //  cart_2_en ? cart_q2 :
   cart_en ? cart_q1 :
@@ -194,11 +196,11 @@ wire [24:0] upaddrext = upload_addr - 'h4000;
 
 dpram #(.addr_width(15), .data_width(8)) ext_ram(
   .clk(clk),
-  .addr(fillRam ? upaddrext[14:0] : zaddr[14:0]),
-  .din(fillRam ? upload_data : zdo ),
+  .addr( zaddr[14:0]),
+  .din( zdo ),
   .q(ext_q),
-  .wr_n(zwr & ~fillRam),
-  .ce_n(~ext_en & ~fillRam)
+  .wr_n(zwr ),
+  .ce_n(~ext_en )
 );
 
 // 16k ram / todo: fix address without subtracting, two 8k chips?
@@ -301,6 +303,7 @@ reg vb_latch;
 wire zint = (vb_latch ^ vb) & vb;
 always @(posedge clk) vb_latch <= vb;
 
+/*
 tv80s cpu(
   .reset_n(~reset),
   .clk(cpu_clk),
@@ -320,6 +323,29 @@ tv80s cpu(
   .di(zdi),
   .dout(zdo)
 );
+*/
+
+
+T80s T80s (
+	.RESET_n  ( ~reset    ),
+	.CLK    ( cpu_clk     ),
+	.WAIT_n   ( 1'b1          ),
+	.INT_n    ( ~zint         ),
+	.NMI_n    ( 1'b1          ),
+	.BUSRQ_n  ( 1'b1          ),
+	.M1_n     ( zm1           ),
+	.MREQ_n   (     ),
+	.IORQ_n   ( ziorq ),
+	.RD_n     (       ), 
+	.WR_n     ( zwr      ),
+	.RFSH_n   (),
+	.HALT_n   (),
+	.BUSAK_n  (),
+	.A        ( zaddr      ),
+	.DI       ( zdi       ),
+	.DO       ( zdo      )
+);
+
 
 video video(
   .clk(vclk),

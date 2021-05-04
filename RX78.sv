@@ -201,6 +201,7 @@ localparam CONF_STR = {
 	"F1,BIN,Load Cartridge;",
 	"-;",
 	"OA,Swap Joysticks,Off,On;",
+	"OB,EXT RAM,Off,On;",
 	"-;",
 	"O89,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"-;",
@@ -318,7 +319,9 @@ rx78 rx78(
 	.upload_index(ioctl_index),
 	.upload_addr(ioctl_addr),
 	.upload_data(ioctl_dout),
-	.upload(ioctl_wr & ioctl_download)
+	.upload(ioctl_wr & ioctl_download),
+	
+	.ext(status[11])
 
 
 );

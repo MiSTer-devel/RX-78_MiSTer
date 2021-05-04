@@ -32,15 +32,13 @@ always @(*) begin
 	kb_rows<=8'h0;
 	
 	
-	//if (addr == 'h30) begin
-	//	kb_rows <= keys[0] | keys[1] | keys[2] | keys[3] | keys[4] | keys[5] | keys[6] | keys[7] | keys[8] | keys[9] | keys[10] | keys[11] | keys[12]| keys[13] | keys[14]; // need up to 15 here
-	//end
+	if (addr == 'h30) begin
+		kb_rows <= keys[0] | keys[1] | keys[2] | keys[3] | keys[4] | keys[5] | keys[6] | keys[7] | keys[8] | keys[9] | keys[10] | keys[11] | keys[12]| keys[13] | keys[14]; // need up to 15 here
+	end
 	if (addr >= 1 && addr <=15) begin
 		kb_rows <= keys[addr-1];
 	end else begin
-//		kb_rows <= 0;
-		kb_rows <= keys[0] | keys[1] | keys[2] | keys[3] | keys[4] | keys[5] | keys[6] | keys[7] | keys[8] | keys[9] | keys[10] | keys[11] | keys[12]| keys[13] | keys[14]; // need up to 15 here
-
+		kb_rows <= 0;
 	end
 	
 
