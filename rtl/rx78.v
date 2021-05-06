@@ -228,7 +228,7 @@ always @*
   endcase
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
-wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'dff;
+wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'hff;
 
 // vram
 dpram #(.addr_width(13), .data_width(8)) vram1(
@@ -394,10 +394,10 @@ keyboard kb(
 wire snd_en = io_en && zaddr[7:0] == 8'hff && ~zwr;
 
 jt89 jt89(
-  .clk(snd_clk),
-  .clk_en(1'b1),
+  .clk(clk),
+  .clk_en(snd_clk),
   .rst(reset),
-  .wr_n(~snd_en),
+  .wr_n(snd_en),
   .din(zdo),
   .sound(sound)
 );
