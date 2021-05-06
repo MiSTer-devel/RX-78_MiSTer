@@ -153,8 +153,9 @@ int main(int argc, char** argv, char** env) {
     rx->reset = hcycles < 2;
 
     rx->clk = !rx->clk;
-    rx->vclk = cycles % 4 == 0;;
-    //rx->cen = cycles % 8 == 0;
+    rx->vclk = cycles % 4 == 0;
+    rx->cpu_clk = cycles % 2;
+    rx->snd_clk = cycles % 2;
     rx->eval();
 
     if (dirty) {

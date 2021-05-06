@@ -14,11 +14,11 @@ module rx78(
 
   // keyboard
   input [10:0] ps2_key,
-  
+
   // joystick input
-  input [31:0] joy1,  
+  input [31:0] joy1,
   input [31:0] joy2,
-   
+
   output [8:0] h,
   output [8:0] v,
   output hs,
@@ -30,7 +30,7 @@ module rx78(
   output [7:0] green,
   output [7:0] blue,
   output [10:0] sound,
-  
+
   input ext
 );
 
@@ -46,20 +46,19 @@ reg [7:0] mask, cmask, bgcolor;
 assign px = vclk;
 
 /*
- 0000 - 1FFF : 8K ROM
- 2000 - 5FFF : Cartridges
- 6000 - AFFF : ext RAM 32k
- B000 - EBFF : RAM 16k
- EC00 - FFFF : VRAM 8k bank
- 
- - is full RAM accessible when bank=0?
- - color mask is not implemented
- - p1,p2.. have extra bits, why?
- - NMI not used?
- - is there a timer somewhere?
- 
- we need a real machine!
- 
+  0000 - 1FFF : 8K ROM
+  2000 - 5FFF : Cartridges
+  6000 - AFFF : ext RAM 32k
+  B000 - EBFF : RAM 16k
+  EC00 - FFFF : VRAM 8k bank
+
+  - is full RAM accessible when bank=0?
+  - color mask is not implemented
+  - p1,p2.. have extra bits, why?
+  - NMI not used?
+  - is there a timer somewhere?
+
+  we need a real machine!
 */
 
 wire rom_en = ~io_en && zaddr < 16'h2000;
@@ -133,7 +132,7 @@ cart32  cart32(
   .upload((upload_index==1) && upload),
   .upload_addr(upload_addr[14:0]),
   .upload_data(upload_data)
-  
+
 );
 
 // 16k cartride (2x8k)
@@ -168,7 +167,7 @@ dualpram #(.addr_width_g(13)) cart1(
 	.address_a(zaddr[12:0]),
 	.enable_a(~(~cart_en | zaddr[14])),
 	.q_a(cart_q1),
-	
+
 	.clock_b(clk),
 	.wren_b((upload_index==1) && upload && upload_addr < 25'h2000),
 	.address_b(upload_addr[12:0]),
@@ -181,14 +180,14 @@ dualpram #(.addr_width_g(13)) cart2(
 	.address_a(zaddr[12:0]),
 	.enable_a(~(~cart_en | ~zaddr[14])),
 	.q_a(cart_q2),
-	
+
 	.clock_b(clk),
 	.wren_b((upload_index==1) && upload && upload_addr >= 25'h2000 && upload_addr < 25'h4000 ),
 	.address_b(upload_addr[12:0]),
 	.data_b(upload_data)
 );
 */
-		
+
 // 32k ext ram
 
 wire fillRam = ((upload_index==1) && upload && upload_addr >= 25'h4000);
@@ -229,7 +228,7 @@ always @*
   endcase
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
-wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'd0;
+wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'dff;
 
 // vram
 dpram #(.addr_width(13), .data_width(8)) vram1(
@@ -299,11 +298,15 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
 );
 
 // vblank interrupt
-reg vb_latch;
-wire zint = (vb_latch ^ vb) & vb;
-always @(posedge clk) vb_latch <= vb;
+reg vb_latch, zint;
+always @(posedge clk) begin
+  vb_latch <= vb;
+  if ((vb_latch ^ vb) & vb) zint <= 1'b1;
+  if (~ziorq && ~zm1) zint <= 1'b0;
+end
 
-/*
+`ifdef VERILATOR
+
 tv80s cpu(
   .reset_n(~reset),
   .clk(cpu_clk),
@@ -323,28 +326,30 @@ tv80s cpu(
   .di(zdi),
   .dout(zdo)
 );
-*/
 
+`else
 
 T80s T80s (
-	.RESET_n  ( ~reset    ),
-	.CLK    ( cpu_clk     ),
-	.WAIT_n   ( 1'b1          ),
-	.INT_n    ( ~zint         ),
-	.NMI_n    ( 1'b1          ),
-	.BUSRQ_n  ( 1'b1          ),
-	.M1_n     ( zm1           ),
-	.MREQ_n   (     ),
-	.IORQ_n   ( ziorq ),
-	.RD_n     (       ), 
-	.WR_n     ( zwr      ),
-	.RFSH_n   (),
-	.HALT_n   (),
-	.BUSAK_n  (),
-	.A        ( zaddr      ),
-	.DI       ( zdi       ),
-	.DO       ( zdo      )
+	.RESET_n  ( ~reset  ),
+	.CLK      ( cpu_clk ),
+	.WAIT_n   ( 1'b1    ),
+	.INT_n    ( ~zint   ),
+	.NMI_n    ( 1'b1    ),
+	.BUSRQ_n  ( 1'b1    ),
+	.M1_n     ( zm1     ),
+	.MREQ_n   (         ),
+	.IORQ_n   ( ziorq   ),
+	.RD_n     (         ),
+	.WR_n     ( zwr     ),
+	.RFSH_n   (         ),
+	.HALT_n   (         ),
+	.BUSAK_n  (         ),
+	.A        ( zaddr   ),
+	.DI       ( zdi     ),
+	.DO       ( zdo     )
 );
+
+`endif
 
 
 video video(
@@ -373,7 +378,6 @@ vdp vdp(
   .green(green),
   .blue(blue)
 );
-
 
 keyboard kb(
   .clk_sys(clk),
