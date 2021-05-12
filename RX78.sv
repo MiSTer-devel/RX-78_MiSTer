@@ -269,7 +269,7 @@ reg snd_clk;
 always @(posedge clk_vid)
 	snd_clk <= ~snd_clk;
 
-wire reset = RESET | status[0] | buttons[1];
+wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
 //////////////////////////////////////////////////////////////////
 
