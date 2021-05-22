@@ -153,10 +153,10 @@ int main(int argc, char** argv, char** env) {
     rx->reset = hcycles < 2;
 
     rx->clk = !rx->clk;
-    rx->vclk = cycles % 4 == 0;
-    rx->cpu_clk = cycles % 2;
-    rx->snd_clk = cycles % 2;
-    rx->eval();
+    rx->vclk = cycles % 12 == 0;
+    rx->cpu_clk = cycles % 12 > 6;
+    rx->snd_clk = cycles % 8 == 0;
+
 
     if (dirty) {
 
@@ -174,14 +174,14 @@ int main(int argc, char** argv, char** env) {
       dirty = false;
     }
 
-    if (rx->px) {
+    if (rx->vclk) {
 
       int px = rx->h;
       int py = rx->v;
 
       if (px >= 0 && px < width && py >= 0 && py < height) {
         int c = rx->red << 16 | rx->green << 8 | rx->blue;
-        setPixel(canvas, px, py, !(rx->vb || rx->hb) ? px < 192 && py < 184 ? c : 0x003300 : 0x330000);
+        setPixel(canvas, px, py, !(rx->vb || rx->hb) ? c : 0x003300);
       }
 
       if (px == 341 && py == 276) dirty = true; // <=== fix
@@ -191,6 +191,7 @@ int main(int argc, char** argv, char** env) {
       printf("sim: %d %s\n", (int)cycles, tracing == true ? "(tracing)" : "");
     }
 
+    rx->eval();
     cycles++;
 
   }

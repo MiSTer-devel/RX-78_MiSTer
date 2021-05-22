@@ -267,7 +267,7 @@ pll pll
 
 reg snd_clk;
 always @(posedge clk_vid)
-	snd_clk <= ~snd_clk;
+  snd_clk <= ~snd_clk;
 
 wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
@@ -294,9 +294,9 @@ wire [31:0] rx78_joy2 = status[10] ? joy1 : joy2;
 rx78 rx78(
 	.reset(reset),
 	.clk(clk_sys), // a fast clock for bram
-	.cpu_clk(cpu_clk), // should be 4
+	.cpu_clk(cpu_clk), // 4
 	.snd_clk(snd_clk), // 3.5
-	.vclk(clk_vid), // should be 7
+	.vclk(clk_vid), // 7
 	.cen(1),
 	.h(),
 	.v(),
