@@ -32,7 +32,7 @@ reg [7:0] c1r, c2r, r0, r1, r2, g0, g1, g2, b0, b1, b2;
 wire screen = h > 32 && v > 19 && h < 192+32 && v < 184+20;
 
 always @(posedge vclk)
-  vdp_addr <= 'hec0 + vwb * 13'd24 + hwb[8:3];
+  vdp_addr <= 13'hec0 + vwb * 13'd24 + hwb[8:3];
 
 always @(posedge clk) begin
   case (state)
@@ -44,26 +44,26 @@ always @(posedge clk) begin
       state <= 4'd3;
     end
     4'd3: begin
-      c1r <= (bg_pen[0] ? p4 : 0) | (bg_pen[1] ? p5 : 0) | (bg_pen[2] ? p6 : 0);
-      c2r <= (fg_pen[0] ? p1 : 0) | (fg_pen[1] ? p2 : 0) | (fg_pen[2] ? p3 : 0);
+      c1r <= (bg_pen[0] ? p4 : 8'd0) | (bg_pen[1] ? p5 : 8'd0) | (bg_pen[2] ? p6 : 8'd0);
+      c2r <= (fg_pen[0] ? p1 : 8'd0) | (fg_pen[1] ? p2 : 8'd0) | (fg_pen[2] ? p3 : 8'd0);
       state <= 4'd4;
     end
     4'd4: begin
-      r0 <= bgc[4] & bgc[0] ? 8'hff : bgc[0] ? 8'h7f : 0;
-      r1 <= c1r[4] & c1r[0] ? 8'hff : c1r[0] ? 8'h7f : 0;
-      r2 <= c2r[4] & c2r[0] ? 8'hff : c2r[0] ? 8'h7f : 0;
-      g0 <= bgc[5] & bgc[1] ? 8'hff : bgc[1] ? 8'h7f : 0;
-      g1 <= c1r[5] & c1r[1] ? 8'hff : c1r[1] ? 8'h7f : 0;
-      g2 <= c2r[5] & c2r[1] ? 8'hff : c2r[1] ? 8'h7f : 0;
-      b0 <= bgc[6] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 0;
-      b1 <= c1r[6] & c1r[2] ? 8'hff : c1r[2] ? 8'h7f : 0;
-      b2 <= c2r[6] & c2r[2] ? 8'hff : c2r[2] ? 8'h7f : 0;
+      r0 <= bgc[4] & bgc[0] ? 8'hff : bgc[0] ? 8'h7f : 8'd0;
+      r1 <= c1r[4] & c1r[0] ? 8'hff : c1r[0] ? 8'h7f : 8'd0;
+      r2 <= c2r[4] & c2r[0] ? 8'hff : c2r[0] ? 8'h7f : 8'd0;
+      g0 <= bgc[5] & bgc[1] ? 8'hff : bgc[1] ? 8'h7f : 8'd0;
+      g1 <= c1r[5] & c1r[1] ? 8'hff : c1r[1] ? 8'h7f : 8'd0;
+      g2 <= c2r[5] & c2r[1] ? 8'hff : c2r[1] ? 8'h7f : 8'd0;
+      b0 <= bgc[6] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 8'd0;
+      b1 <= c1r[6] & c1r[2] ? 8'hff : c1r[2] ? 8'h7f : 8'd0;
+      b2 <= c2r[6] & c2r[2] ? 8'hff : c2r[2] ? 8'h7f : 8'd0;
       state <= 4'd5;
     end
     4'd5: begin
-      red <= screen ? fg_pen ? r2 : bg_pen ? r1 : r0 : 0;
-      green <= screen ? fg_pen ? g2 : bg_pen ? g1 : g0 : 0;
-      blue  = screen ? fg_pen ? b2 : bg_pen ? b1 : b0 : 0;
+      red <= screen ? fg_pen ? r2 : bg_pen ? r1 : r0 : 8'd0;
+      green <= screen ? fg_pen ? g2 : bg_pen ? g1 : g0 : 8'd0;
+      blue  = screen ? fg_pen ? b2 : bg_pen ? b1 : b0 : 8'd0;
       state <= 4'd0;
     end
   endcase

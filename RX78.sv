@@ -180,7 +180,7 @@ assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DD
 
 assign VGA_SL = 0;
 assign VGA_F1 = 0;
-assign VGA_SCALER = 1;
+assign VGA_SCALER = 0;
 
 assign LED_DISK = 0;
 assign LED_POWER = 0;
@@ -243,7 +243,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.ioctl_index(ioctl_index),
 	
 	.joystick_0(joy1),
-   .joystick_1(joy2),
+  .joystick_1(joy2),
 	
 	
 	.buttons(buttons),
@@ -293,10 +293,10 @@ wire [31:0] rx78_joy2 = status[10] ? joy1 : joy2;
 
 rx78 rx78(
 	.reset(reset),
-	.clk(clk_sys), // a fast clock for bram
-	.cpu_clk(cpu_clk), // 4
-	.snd_clk(snd_clk), // 3.5
-	.vclk(clk_vid), // 7
+	.clk(clk_sys),
+	.cpu_clk(cpu_clk),
+	.snd_clk(snd_clk),
+	.vclk(clk_vid),
 	.cen(1),
 	.h(),
 	.v(),

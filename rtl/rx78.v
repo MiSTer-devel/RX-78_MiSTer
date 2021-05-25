@@ -413,7 +413,7 @@ reg [7:0] jt80_din;
 always @(posedge clk)begin
   if (snd_clk) begin
    jt80_din <= zdo;
-	 snd_en <= io_en && zaddr[7:0] == 8'hff;// && ~zwr;
+	 snd_en <= io_en && zaddr[7:0] == 8'hff && ~zwr && ~ziorq;
   end
 end
 
@@ -421,7 +421,7 @@ jt89 jt89(
   .clk(snd_clk),
   .clk_en(1'b1),
   .rst(reset),
-  .wr_n(~(snd_en & ~ziorq)),
+  .wr_n(~snd_en),
   .din(jt80_din),
   .sound(sound),
   .ready(jt89_rdy)
