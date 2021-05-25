@@ -35,7 +35,7 @@ always @(*) begin
 	if (addr == 'h30) begin
 		kb_rows <= keys[0] | keys[1] | keys[2] | keys[3] | keys[4] | keys[5] | keys[6] | keys[7] | keys[8] | keys[9] | keys[10] | keys[11] | keys[12]| keys[13] | keys[14]; // need up to 15 here
 	end
-	if (addr >= 1 && addr <=15) begin
+	else if (addr >= 1 && addr <=15) begin
 		kb_rows <= keys[addr-1];
 	end else begin
 		kb_rows <= 0;
@@ -69,11 +69,6 @@ always @(posedge clk_sys) begin
 	keys[14] <= 8'h00;
 
 	
-	/*
-	@Alan, I don't know what are the
-	correct values here but it won't
-	boot on cart with $ff
-	*/
 	if(~old_reset & reset) begin
 		keys[0]  <= 8'h00;
 		keys[1]  <= 8'h00;
@@ -83,12 +78,12 @@ always @(posedge clk_sys) begin
 		keys[6]  <= 8'h00;
 		keys[7]  <= 8'h00;
 		keys[8]  <= 8'h00;
-		keys[9]  <= 8'h00;
-		keys[10] <= 8'h00;
-		keys[11] <= 8'h00;
-		keys[12] <= 8'h00;
-		keys[13] <= 8'h00;
-		keys[14] <= 8'h00;
+//		keys[9]  <= 8'h00;
+//		keys[10] <= 8'h00;
+//		keys[11] <= 8'h00;
+//		keys[12] <= 8'h00;
+//		keys[13] <= 8'h00;
+//		keys[14] <= 8'h00;
 	end
 	
 
@@ -202,8 +197,10 @@ always @(posedge clk_sys) begin
 			
 			default: ;
 		endcase
-	end
 
+
+   end 
+    
 	/*	
 		wire m_up     = joy[3];
 wire m_down   = joy[2];
@@ -333,7 +330,7 @@ wire m_fire   = joy[4];
 		end
 		
 			
-		
+
 		
 		
 end

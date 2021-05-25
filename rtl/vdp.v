@@ -31,12 +31,13 @@ reg [7:0] c1r, c2r, r0, r1, r2, g0, g1, g2, b0, b1, b2;
 
 wire screen = h > 32 && v > 19 && h < 192+32 && v < 184+20;
 
-always @(posedge clk)
-  if (vclk) vdp_addr <= 'hec0 + vwb * 'd24 + hwb[8:3];
+always @(posedge vclk)
+  vdp_addr <= 'hec0 + vwb * 13'd24 + hwb[8:3];
 
 always @(posedge clk) begin
   case (state)
     4'd0: if (vclk) state <= 4'd2;
+    //4'd1: state <= 4'd2;
     4'd2: begin
       fg_pen <= mask[2:0] & { fg3[hbit], fg2[hbit], fg1[hbit] };
       bg_pen <= mask[5:3] & { bg3[hbit], bg2[hbit], bg1[hbit] };

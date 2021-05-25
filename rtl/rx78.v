@@ -297,18 +297,26 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
   .vdata(bg3)
 );
 
+//// vblank interrupt
+//reg vb_latch, zint;
+//reg [3:0] cnti;
+//always @(posedge clk) begin
+//  vb_latch <= vb;
+//  if ((vb_latch ^ vb) & vb) begin
+//    cnti <= cnti + 4'd1;
+//    if (cnti == 4'd7) begin
+//      zint <= 1'b1;
+//      cnti <= 4'd0;
+//    end
+//  end
+//  if (~ziorq && ~zm1) zint <= 1'b0;
+//end
+
 // vblank interrupt
 reg vb_latch, zint;
-reg [3:0] cnti;
 always @(posedge clk) begin
   vb_latch <= vb;
-  if ((vb_latch ^ vb) & vb) begin
-    cnti <= cnti + 4'd1;
-    if (cnti == 4'd15) begin
-      zint <= 1'b1;
-      cnti <= 4'd0;
-    end
-  end
+  if (~vb_latch & vb) zint <= 1'b1;
   if (~ziorq && ~zm1) zint <= 1'b0;
 end
 
@@ -399,24 +407,24 @@ keyboard kb(
   .joy2(joy2)
 );
 
+wire jt89_rdy;
 reg snd_en;
- reg [7:0] jt80_din;
+reg [7:0] jt80_din;
 always @(posedge clk)begin
   if (snd_clk) begin
-    jt80_din <= zdo;
-	 snd_en <= io_en && zaddr[7:0] == 8'hff && ~zwr;
+   jt80_din <= zdo;
+	 snd_en <= io_en && zaddr[7:0] == 8'hff;// && ~zwr;
   end
 end
-
-//wire snd_en = io_en && zaddr[7:0] == 8'hff && ~zwr;
 
 jt89 jt89(
   .clk(snd_clk),
   .clk_en(1'b1),
   .rst(reset),
-  .wr_n(snd_en),
+  .wr_n(~(snd_en & ~ziorq)),
   .din(jt80_din),
-  .sound(sound)
+  .sound(sound),
+  .ready(jt89_rdy)
 );
 
 endmodule
