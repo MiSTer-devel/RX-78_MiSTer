@@ -94,9 +94,9 @@ always @(posedge clk) begin
     4'd3: begin
 
       // bg color
-      r0 <= bgc[3] & bgc[0] ? 8'hff : bgc[0] ? 8'h7f : 8'd0;
-      g0 <= bgc[4] & bgc[1] ? 8'hff : bgc[1] ? 8'h7f : 8'd0;
-      b0 <= bgc[5] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 8'd0;
+      r0 <= bgc[4] & bgc[0] ? 8'hff : bgc[0] ? 8'h7f : 8'd0;
+      g0 <= bgc[5] & bgc[1] ? 8'hff : bgc[1] ? 8'h7f : 8'd0;
+      b0 <= bgc[6] & bgc[2] ? 8'hff : bgc[2] ? 8'h7f : 8'd0;
 
       // layer 1
       r1 <= c1r[3] & c1r[0] ? 8'hff : c1r[0] ? 8'h7f : 8'd0;
