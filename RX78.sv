@@ -264,9 +264,9 @@ pll pll
 	.outclk_1(clk_vid)
 );
 
-reg snd_clk;
+reg main_clk;
 always @(posedge clk_vid)
-  snd_clk <= ~snd_clk;
+  main_clk <= ~main_clk;
 
 
 wire reset = RESET | status[0] | buttons[1] | ioctl_download;
@@ -294,7 +294,7 @@ wire [31:0] rx78_joy2 = status[10] ? joy1 : joy2;
 rx78 rx78(
 	.reset(reset),
 	.clk(clk_sys),
-	.snd_clk(snd_clk),
+	.main_clk(main_clk),
 	.vclk(clk_vid),
 	.cen(1),
 	.h(),

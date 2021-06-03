@@ -1,5 +1,5 @@
 //
-// RX-78 Video Display Controller
+// RX-78 Video Display Processor
 //
 // There are 6x1bit vram planes, 1 byte for 8 pixels. Each vram layer has a
 // corresponding color palette (p1, p2, p3, p4, p5, p6), at I/O from $F5 to $FA.
@@ -46,8 +46,6 @@ wire [8:0] hwb = h - 9'd32;
 wire [8:0] vwb = v - 9'd20;
 
 reg [3:0] state;
-
-reg [5:0] layers_en;
 reg [5:0] c1r, c2r;
 reg [7:0] r0, r1, r2, g0, g1, g2, b0, b1, b2;
 

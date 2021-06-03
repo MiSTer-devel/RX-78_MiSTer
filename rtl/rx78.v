@@ -107,6 +107,11 @@ always @(posedge clk) begin
       8'hfe: if (~zwr) mask <= zdo;
     endcase
   end
+  if (reset) begin
+    bgcolor <= 8'd0;
+    mask <= 8'd0;
+    cmask <= 8'd0;
+  end
 end
 
 // 8k rom
@@ -227,76 +232,83 @@ always @*
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
 wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'h0;
 
+// empty VRAMS during cart load
+wire [12:0] vram_addr = upload ? upload_addr[12:0] : zaddr[12:0];
+wire [7:0] vram_din = upload ? 8'd0 : zdo;
+wire vram_wr = upload ? 1'b0 : zwr;
+wire [5:0] vr_en = upload ? 6'd0 : vchip_en;
+
 // vram
 dpram #(.addr_width(13), .data_width(8)) vram1(
   .clk(clk),
-  .addr(zaddr[12:0]),
-  .din(zdo),
+  .addr(vram_addr),
+  .din(vram_din),
   .q(v1q),
-  .wr_n(zwr),
-  .ce_n(vchip_en[0]),
+  .wr_n(vram_wr),
+  .ce_n(vr_en[0]),
   .vaddr(vdp_addr[12:0]),
   .vdata(v1)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram2(
   .clk(clk),
-  .addr(zaddr[12:0]),
-  .din(zdo),
+  .addr(vram_addr),
+  .din(vram_din),
   .q(v2q),
-  .wr_n(zwr),
-  .ce_n(vchip_en[1]),
+  .wr_n(vram_wr),
+  .ce_n(vr_en[1]),
   .vaddr(vdp_addr[12:0]),
   .vdata(v2)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram3(
   .clk(clk),
-  .addr(zaddr[12:0]),
-  .din(zdo),
+  .addr(vram_addr),
+  .din(vram_din),
   .q(v3q),
-  .wr_n(zwr),
-  .ce_n(vchip_en[2]),
+  .wr_n(vram_wr),
+  .ce_n(vr_en[2]),
   .vaddr(vdp_addr[12:0]),
   .vdata(v3)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram4(
   .clk(clk),
-  .addr(zaddr[12:0]),
-  .din(zdo),
+  .addr(vram_addr),
+  .din(vram_din),
   .q(v4q),
-  .wr_n(zwr),
-  .ce_n(vchip_en[3]),
+  .wr_n(vram_wr),
+  .ce_n(vr_en[3]),
   .vaddr(vdp_addr[12:0]),
   .vdata(v4)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram5(
   .clk(clk),
-  .addr(zaddr[12:0]),
-  .din(zdo),
+  .addr(vram_addr),
+  .din(vram_din),
   .q(v5q),
-  .wr_n(zwr),
-  .ce_n(vchip_en[4]),
+  .wr_n(vram_wr),
+  .ce_n(vr_en[4]),
   .vaddr(vdp_addr[12:0]),
   .vdata(v5)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram6(
   .clk(clk),
-  .addr(zaddr[12:0]),
-  .din(zdo),
+  .addr(vram_addr),
+  .din(vram_din),
   .q(v6q),
-  .wr_n(zwr),
-  .ce_n(vchip_en[5]),
+  .wr_n(vram_wr),
+  .ce_n(vr_en[5]),
   .vaddr(vdp_addr[12:0]),
   .vdata(v6)
 );
 
+
 reg vb_latch, zint;
 reg [3:0] vbcnt;
-always @(posedge main_clk) begin // cpu_clk
+always @(posedge main_clk) begin
   vb_latch <= vb;
   if (~vb_latch & vb) begin
     zint <= 1'b1;
@@ -306,21 +318,8 @@ always @(posedge main_clk) begin // cpu_clk
 //    end
 //    else vbcnt <= vbcnt + 4'd1;
   end
-//  if (zint) zint <= 1'b0;
   if (~ziorq & ~zm1) zint <= 1'b0;
 end
-
-
-//reg hb_latch, zint;
-//reg [2:0] hbcnt;
-//always @(posedge cpu_clk) begin
-//  hb_latch <= hb;
-//  if (~hb_latch & hb) begin
-//    zint <= hbcnt == 0;
-//    hbcnt <= hbcnt + 3'd1;
-//  end
-//  if (~ziorq && ~zm1) zint <= 1'b0;
-//end
 
 
 `ifdef VERILATOR
