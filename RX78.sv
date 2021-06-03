@@ -255,19 +255,19 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 
 ///////////////////////   CLOCKS   ///////////////////////////////
 
-wire clk_sys, clk_vid, cpu_clk;
+wire clk_sys, clk_vid;//, cpu_clk;
 pll pll
 (
 	.refclk(CLK_50M),
 	.rst(0),
 	.outclk_0(clk_sys),
-	.outclk_1(cpu_clk),
-	.outclk_2(clk_vid)
+	.outclk_1(clk_vid)
 );
 
 reg snd_clk;
 always @(posedge clk_vid)
   snd_clk <= ~snd_clk;
+
 
 wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
@@ -294,7 +294,6 @@ wire [31:0] rx78_joy2 = status[10] ? joy1 : joy2;
 rx78 rx78(
 	.reset(reset),
 	.clk(clk_sys),
-	.cpu_clk(cpu_clk),
 	.snd_clk(snd_clk),
 	.vclk(clk_vid),
 	.cen(1),

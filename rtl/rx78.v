@@ -2,8 +2,7 @@
 module rx78(
   input reset,
   input clk, // clk_sys
-  input cpu_clk,
-  input snd_clk,
+  input main_clk,
   input vclk,
   input cen,
 
@@ -53,8 +52,6 @@ assign px = vclk;
   EC00 - FFFF : VRAM 8k bank
 
   - is full RAM accessible when bank=0?
-  - color mask is not implemented
-  - p1,p2.. have extra bits, why?
   - NMI not used?
   - is there a timer somewhere?
 
@@ -105,7 +102,7 @@ always @(posedge clk) begin
       8'hf8: if (~zwr) p4 <= zdo;
       8'hf9: if (~zwr) p5 <= zdo;
       8'hfa: if (~zwr) p6 <= zdo;
-      8'hfb: if (~zwr) cmask <= { 2'b0,  zdo[0], zdo[2], zdo[1], zdo[0], zdo[2], zdo[1] };
+      8'hfb: if (~zwr) cmask <= zdo;
       8'hfc: if (~zwr) bgcolor <= zdo;
       8'hfe: if (~zwr) mask <= zdo;
     endcase
@@ -212,19 +209,19 @@ dpram #(.addr_width(14), .data_width(8)) ram(
   .ce_n(~ram_en)
 );
 
-wire [7:0] bg1, bg2, bg3, fg1, fg2, fg3;
-wire [5:0] vchip_en = vram_en ? (zwr ? read_bank : ~vram_wr_bank) : 6'h3f;
+wire [7:0] v1, v2, v3, v4, v5, v6;
+wire [5:0] vchip_en = vram_en ? (zwr ? read_bank : ~vram_wr_bank) : 6'b111111;
 
-reg [7:0] read_bank;
+reg [5:0] read_bank;
 always @*
   case (vram_rd_bank)
-    8'd1: read_bank = 8'b11111110;
-    8'd2: read_bank = 8'b11111101;
-    8'd3: read_bank = 8'b11111011;
-    8'd4: read_bank = 8'b11110111;
-    8'd5: read_bank = 8'b11101111;
-    8'd6: read_bank = 8'b11011111;
-    default: read_bank = 8'b11111111;
+    8'd1: read_bank = 6'b111110;
+    8'd2: read_bank = 6'b111101;
+    8'd3: read_bank = 6'b111011;
+    8'd4: read_bank = 6'b110111;
+    8'd5: read_bank = 6'b101111;
+    8'd6: read_bank = 6'b011111;
+    default: read_bank = 6'b111111;
   endcase
 
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
@@ -239,7 +236,7 @@ dpram #(.addr_width(13), .data_width(8)) vram1(
   .wr_n(zwr),
   .ce_n(vchip_en[0]),
   .vaddr(vdp_addr[12:0]),
-  .vdata(fg1)
+  .vdata(v1)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram2(
@@ -250,7 +247,7 @@ dpram #(.addr_width(13), .data_width(8)) vram2(
   .wr_n(zwr),
   .ce_n(vchip_en[1]),
   .vaddr(vdp_addr[12:0]),
-  .vdata(fg2)
+  .vdata(v2)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram3(
@@ -261,7 +258,7 @@ dpram #(.addr_width(13), .data_width(8)) vram3(
   .wr_n(zwr),
   .ce_n(vchip_en[2]),
   .vaddr(vdp_addr[12:0]),
-  .vdata(fg3)
+  .vdata(v3)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram4(
@@ -272,7 +269,7 @@ dpram #(.addr_width(13), .data_width(8)) vram4(
   .wr_n(zwr),
   .ce_n(vchip_en[3]),
   .vaddr(vdp_addr[12:0]),
-  .vdata(bg1)
+  .vdata(v4)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram5(
@@ -283,7 +280,7 @@ dpram #(.addr_width(13), .data_width(8)) vram5(
   .wr_n(zwr),
   .ce_n(vchip_en[4]),
   .vaddr(vdp_addr[12:0]),
-  .vdata(bg2)
+  .vdata(v5)
 );
 
 dpram #(.addr_width(13), .data_width(8)) vram6(
@@ -294,37 +291,43 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
   .wr_n(zwr),
   .ce_n(vchip_en[5]),
   .vaddr(vdp_addr[12:0]),
-  .vdata(bg3)
+  .vdata(v6)
 );
 
-//// vblank interrupt
-//reg vb_latch, zint;
-//reg [3:0] cnti;
-//always @(posedge clk) begin
-//  vb_latch <= vb;
-//  if ((vb_latch ^ vb) & vb) begin
-//    cnti <= cnti + 4'd1;
-//    if (cnti == 4'd7) begin
+reg vb_latch, zint;
+reg [3:0] vbcnt;
+always @(posedge main_clk) begin // cpu_clk
+  vb_latch <= vb;
+  if (~vb_latch & vb) begin
+    zint <= 1'b1;
+//    if (vbcnt == 4'd6) begin
 //      zint <= 1'b1;
-//      cnti <= 4'd0;
+//      vbcnt <= 4'd0;
 //    end
+//    else vbcnt <= vbcnt + 4'd1;
+  end
+//  if (zint) zint <= 1'b0;
+  if (~ziorq & ~zm1) zint <= 1'b0;
+end
+
+
+//reg hb_latch, zint;
+//reg [2:0] hbcnt;
+//always @(posedge cpu_clk) begin
+//  hb_latch <= hb;
+//  if (~hb_latch & hb) begin
+//    zint <= hbcnt == 0;
+//    hbcnt <= hbcnt + 3'd1;
 //  end
 //  if (~ziorq && ~zm1) zint <= 1'b0;
 //end
 
-// vblank interrupt
-reg vb_latch, zint;
-always @(posedge clk) begin
-  vb_latch <= vb;
-  if (~vb_latch & vb) zint <= 1'b1;
-  if (~ziorq && ~zm1) zint <= 1'b0;
-end
 
 `ifdef VERILATOR
 
 tv80s cpu(
   .reset_n(~reset),
-  .clk(cpu_clk),
+  .clk(main_clk),
   .wait_n(1'b1),
   .int_n(~zint),
   .nmi_n(1'b1),
@@ -345,23 +348,23 @@ tv80s cpu(
 `else
 
 T80s T80s (
-	.RESET_n  ( ~reset  ),
-	.CLK      ( cpu_clk ),
-	.WAIT_n   ( 1'b1    ),
-	.INT_n    ( ~zint   ),
-	.NMI_n    ( 1'b1    ),
-	.BUSRQ_n  ( 1'b1    ),
-	.M1_n     ( zm1     ),
-	.MREQ_n   (         ),
-	.IORQ_n   ( ziorq   ),
-	.RD_n     (         ),
-	.WR_n     ( zwr     ),
-	.RFSH_n   (         ),
-	.HALT_n   (         ),
-	.BUSAK_n  (         ),
-	.A        ( zaddr   ),
-	.DI       ( zdi     ),
-	.DO       ( zdo     )
+	.RESET_n  ( ~reset   ),
+	.CLK      ( main_clk ),
+	.WAIT_n   ( 1'b1     ),
+	.INT_n    ( ~zint    ),
+	.NMI_n    ( 1'b1     ),
+	.BUSRQ_n  ( 1'b1     ),
+	.M1_n     ( zm1      ),
+	.MREQ_n   (          ),
+	.IORQ_n   ( ziorq    ),
+	.RD_n     (          ),
+	.WR_n     ( zwr      ),
+	.RFSH_n   (          ),
+	.HALT_n   (          ),
+	.BUSAK_n  (          ),
+	.A        ( zaddr    ),
+	.DI       ( zdi      ),
+	.DO       ( zdo      )
 );
 
 `endif
@@ -383,8 +386,8 @@ vdp vdp(
   .h(h),
   .v(v),
   .vdp_addr(vdp_addr),
-  .fg1(fg1), .fg2(fg2), .fg3(fg3),
-  .bg1(bg1), .bg2(bg2), .bg3(bg3),
+  .v1(v1), .v2(v2), .v3(v3),
+  .v4(v4), .v5(v5), .v6(v6),
   .p1(p1), .p2(p2), .p3(p3),
   .p4(p4), .p5(p5), .p6(p6),
   .mask(mask),
@@ -411,14 +414,14 @@ wire jt89_rdy;
 reg snd_en;
 reg [7:0] jt80_din;
 always @(posedge clk)begin
-  if (snd_clk) begin
+  if (main_clk) begin
    jt80_din <= zdo;
-	 snd_en <= io_en && zaddr[7:0] == 8'hff && ~zwr && ~ziorq;
+	 snd_en <= io_en && zaddr[7:0] == 8'hff && ~zwr;
   end
 end
 
 jt89 jt89(
-  .clk(snd_clk),
+  .clk(main_clk),
   .clk_en(1'b1),
   .rst(reset),
   .wr_n(~snd_en),
