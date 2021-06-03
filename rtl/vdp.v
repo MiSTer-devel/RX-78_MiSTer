@@ -6,7 +6,7 @@
 //
 // A 8bit palette color is encoded as 0RGB0RGB, bits 3:0 activate a color
 // channel while bits 6:4 define the brightness for each channel. For example,
-// 01000100 is red, 00000100 is dark red, 00100010 is green, 00100000 is dark
+// 01000100 is red, 00000100 is dark red, 00100010 is green, 00000010 is dark
 // green...
 //
 // The "mask" register at I/O $FE simply enables/disables vram planes.
@@ -66,7 +66,7 @@ wire [5:0] layer1 = layers & ~cmask[5:0];
 wire [5:0] layer2 = layers & cmask[5:0];
 
 always @(posedge vclk)
-	 vdp_addr <= 'hec0 + vwb * 'd24 + hwb[8:3];
+  vdp_addr <= 'hec0 + vwb * 'd24 + hwb[8:3];
 
 always @(posedge clk) begin
   case (state)
