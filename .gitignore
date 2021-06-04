@@ -41,5 +41,3 @@ c5_pin_model_dump.txt
 **/obj_dir
 **/.DS_Store
 verilator/obj_dir*
-*.mem
-*.mem
