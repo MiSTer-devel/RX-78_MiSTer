@@ -55,15 +55,12 @@ assign px = vclk;
   - NMI not used?
   - is there a timer somewhere?
 
-  we need a real machine!
 */
 
 wire rom_en = ~io_en && zaddr < 16'h2000;
-//wire cart_en = ~io_en && zaddr >= 16'h2000 && zaddr < 16'h6000;
-//wire cart_1_en = cart_en && ~zaddr[14];
-//wire cart_2_en = cart_en && zaddr[14];
-
-wire cart_en = ziorq &&zaddr >= 16'h2000 && zaddr < 16'hb000;
+wire cart_en = ~io_en && zaddr >= 16'h2000 && zaddr < 16'h6000;
+wire cart_1_en = cart_en && ~zaddr[14];
+wire cart_2_en = cart_en && zaddr[14];
 
 wire ext_en = ~io_en && zaddr >= 16'h6000 && zaddr < 16'hb000;
 wire ram_en = ~io_en && zaddr >= 16'hb000 && zaddr < 16'hec00;
@@ -76,10 +73,8 @@ wire [7:0] zdi =
   io_en     ? io_q    :
   rom_en    ? rom_q   :
   (ext && ext_en )   ? ext_q   :
-//  cart_1_en ? cart_q1 :
-//  cart_2_en ? cart_q2 :
-  cart_en ? cart_q1 :
-
+  cart_1_en ? cart_q1 :
+  cart_2_en ? cart_q2 :
   ram_en    ? ram_q   :
   vram_en   ? vram_q  : 8'hff;
 
@@ -92,9 +87,11 @@ always @(posedge clk) begin
   io_q <= 8'hff;
   if (io_en) begin
     case (zaddr[7:0])
+      //8'h23: ?
+      //8'hef: ?
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
-      //8'hf3: write only, what is it?
+      //8'hf3: ?
       8'hf4: if (~zwr) kb_cols <= zdo; else io_q <= kb_rows;
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
@@ -122,23 +119,7 @@ rom rom(
   .q(rom_q)
 );
 
-
-// 32k cart
-wire [15:0] caddr = zaddr - 'h2000;
-cart32  cart32(
-  .clk(clk),
-  .ce_n(~cart_en ),
-  .addr(caddr[14:0] ),
-  .q(cart_q1),
-
-  .upload((upload_index==1) && upload),
-  .upload_addr(upload_addr[14:0]),
-  .upload_data(upload_data)
-
-);
-
 // 16k cartride (2x8k)
-/*
 cart cart1(
   .clk(clk),
   .ce_n(~cart_en | zaddr[14]),
@@ -150,7 +131,6 @@ cart cart1(
   .upload_data(upload_data)
 );
 
-
 cart cart2(
   .clk(clk),
   .ce_n(~cart_en | ~zaddr[14]),
@@ -161,34 +141,7 @@ cart cart2(
   .upload_addr(upload_addr[12:0]),
   .upload_data(upload_data)
 );
-*/
 
-/*
-dualpram #(.addr_width_g(13)) cart1(
-	.clock_a(clk),
-	.address_a(zaddr[12:0]),
-	.enable_a(~(~cart_en | zaddr[14])),
-	.q_a(cart_q1),
-
-	.clock_b(clk),
-	.wren_b((upload_index==1) && upload && upload_addr < 25'h2000),
-	.address_b(upload_addr[12:0]),
-	.data_b(upload_data)
-);
-
-
-dualpram #(.addr_width_g(13)) cart2(
-	.clock_a(clk),
-	.address_a(zaddr[12:0]),
-	.enable_a(~(~cart_en | ~zaddr[14])),
-	.q_a(cart_q2),
-
-	.clock_b(clk),
-	.wren_b((upload_index==1) && upload && upload_addr >= 25'h2000 && upload_addr < 25'h4000 ),
-	.address_b(upload_addr[12:0]),
-	.data_b(upload_data)
-);
-*/
 
 // 32k ext ram
 
@@ -197,11 +150,11 @@ wire [24:0] upaddrext = upload_addr - 'h4000;
 
 dpram #(.addr_width(15), .data_width(8)) ext_ram(
   .clk(clk),
-  .addr( zaddr[14:0]),
-  .din( zdo ),
+  .addr(fillRam ? upaddrext : zaddr[14:0] - 15'h6000),
+  .din(fillRam ? upload_data : zdo),
   .q(ext_q),
-  .wr_n(zwr ),
-  .ce_n(~ext_en )
+  .wr_n(fillRam ? 1'b0 : zwr),
+  .ce_n(fillRam ? 1'b0 : ~ext_en)
 );
 
 // 16k ram / todo: fix address without subtracting, two 8k chips?
@@ -232,7 +185,7 @@ always @*
 wire [7:0] v1q, v2q, v3q, v4q, v5q, v6q;
 wire [7:0] vram_q = vram_en ? (v1q | v2q | v3q | v4q | v5q | v6q) : 8'h0;
 
-// empty VRAMS during cart load
+// empty VRAMs during cart load
 wire [12:0] vram_addr = upload ? upload_addr[12:0] : zaddr[12:0];
 wire [7:0] vram_din = upload ? 8'd0 : zdo;
 wire vram_wr = upload ? 1'b0 : zwr;
@@ -307,20 +260,11 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
 
 
 reg vb_latch, zint;
-reg [3:0] vbcnt;
 always @(posedge main_clk) begin
   vb_latch <= vb;
-  if (~vb_latch & vb) begin
-    zint <= 1'b1;
-//    if (vbcnt == 4'd6) begin
-//      zint <= 1'b1;
-//      vbcnt <= 4'd0;
-//    end
-//    else vbcnt <= vbcnt + 4'd1;
-  end
+  if (~vb_latch & vb) zint <= 1'b1;
   if (~ziorq & ~zm1) zint <= 1'b0;
 end
-
 
 `ifdef VERILATOR
 
