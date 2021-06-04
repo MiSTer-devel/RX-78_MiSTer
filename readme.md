@@ -15,6 +15,7 @@ To do list:
 - Add cassette support and ADC in.
 - Add game identification mechanism to support for different joystick mappings.
 - Identify & implement the missing I/O ports.
+- VGA output works but hsync timing seems wrong.
 
 
 ## Games
