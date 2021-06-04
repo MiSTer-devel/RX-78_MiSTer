@@ -20,6 +20,7 @@ To do list:
 
 ## Games
 
+
 ### Burger Shop
   Z and X to start and move; Space to pick up and put down
 
@@ -62,6 +63,7 @@ To do list:
 
 ## Emulators & machine information:
 
+- https://archive.org/download/rx-78-mister (games)
 - https://github.com/tautologico/common-src-project
 - http://takeda-toshiya.my.coocan.jp/
 - https://25yg7xnxvowpxahhot33jvnbmq-ac5fdsxevxq4s5y-my-coocan.translate.goog/rx78/tech.html
