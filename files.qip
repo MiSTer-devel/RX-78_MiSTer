@@ -9,6 +9,5 @@ set_global_assignment -name QIP_FILE rtl/tv80/TV80.qip
 set_global_assignment -name QIP_FILE rtl/T80/T80.qip
 set_global_assignment -name QIP_FILE rtl/jt89/jt89_verilog.qip
 set_global_assignment -name SDC_FILE RX78.sdc
-#set_global_assignment -name VHDL_FILE rtl/dualpram.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/keyboard.sv
 set_global_assignment -name SYSTEMVERILOG_FILE RX78.sv

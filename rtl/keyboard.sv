@@ -121,14 +121,14 @@ always @(posedge clk_sys) begin
 			8'h36 : keys[0][6] <= press_btn; // 6
 			8'h3d : keys[0][7] <= press_btn; // 7
 
-			8'h3e : keys[0][0] <= press_btn; // 8
-			8'h46 : keys[0][1] <= press_btn; // 9
-			8'h1e : keys[0][2] <= press_btn; // :
-			8'h4C : keys[0][3] <= press_btn; // ;
-			8'h41 : keys[0][4] <= press_btn; // ,
-			8'h4e : keys[0][5] <= press_btn; // -
-			8'h49 : keys[0][6] <= press_btn; // .
-			8'h4A : keys[0][7] <= press_btn; // /
+			8'h3e : keys[1][0] <= press_btn; // 8
+			8'h46 : keys[1][1] <= press_btn; // 9
+			8'h1e : keys[1][2] <= press_btn; // :
+			8'h4C : keys[1][3] <= press_btn; // ;
+			8'h41 : keys[1][4] <= press_btn; // ,
+			8'h4e : keys[1][5] <= press_btn; // -
+			8'h49 : keys[1][6] <= press_btn; // .
+			8'h4A : keys[1][7] <= press_btn; // /
 
 			
 			8'h0E : keys[2][0] <= press_btn; // ` @ ?

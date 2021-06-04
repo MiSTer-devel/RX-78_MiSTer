@@ -1,3 +1,18 @@
+//
+// RX-78 Main Core file
+//
+// Memory map:
+// 0000 - 1FFF : 8K ROM
+// 2000 - 5FFF : Cartridges
+// 6000 - AFFF : ext RAM 32k
+// B000 - EBFF : RAM 16k
+// EC00 - FFFF : VRAM 8k bank
+//
+// - is full RAM accessible when bank=0?
+// - is NMI used?
+// - is there a timer somewhere?
+// - what are the ports $23, $EF & $F3?
+//
 
 module rx78(
   input reset,
@@ -43,19 +58,6 @@ wire [12:0] vdp_addr;
 reg [7:0] mask, cmask, bgcolor;
 
 assign px = vclk;
-
-/*
-  0000 - 1FFF : 8K ROM
-  2000 - 5FFF : Cartridges
-  6000 - AFFF : ext RAM 32k
-  B000 - EBFF : RAM 16k
-  EC00 - FFFF : VRAM 8k bank
-
-  - is full RAM accessible when bank=0?
-  - NMI not used?
-  - is there a timer somewhere?
-
-*/
 
 wire rom_en = ~io_en && zaddr < 16'h2000;
 wire cart_en = ~io_en && zaddr >= 16'h2000 && zaddr < 16'h6000;
@@ -142,12 +144,12 @@ cart cart2(
   .upload_data(upload_data)
 );
 
-
-// 32k ext ram
-
+// For 32k carts, we fill ext ram with additional cartridge data
 wire fillRam = ((upload_index==1) && upload && upload_addr >= 25'h4000);
 wire [24:0] upaddrext = upload_addr - 'h4000;
 
+// 32k ext ram, todo: divide in sub-chips to avoid that ugly subtraction that
+// does not exist in the original machine
 dpram #(.addr_width(15), .data_width(8)) ext_ram(
   .clk(clk),
   .addr(fillRam ? upaddrext : zaddr[14:0] - 15'h6000),
@@ -166,6 +168,8 @@ dpram #(.addr_width(14), .data_width(8)) ram(
   .wr_n(zwr),
   .ce_n(~ram_en)
 );
+
+// vram layers
 
 wire [7:0] v1, v2, v3, v4, v5, v6;
 wire [5:0] vchip_en = vram_en ? (zwr ? read_bank : ~vram_wr_bank) : 6'b111111;
@@ -358,8 +362,8 @@ reg snd_en;
 reg [7:0] jt80_din;
 always @(posedge clk)begin
   if (main_clk) begin
-   jt80_din <= zdo;
-	 snd_en <= io_en && zaddr[7:0] == 8'hff && ~zwr;
+    jt80_din <= zdo;
+    snd_en <= io_en && zaddr[7:0] == 8'hff && ~zwr;
   end
 end
 
