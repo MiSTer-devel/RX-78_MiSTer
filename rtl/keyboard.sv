@@ -180,7 +180,7 @@ always @(posedge clk_sys) begin
 			//8'h22 : keys[7][0] <= press_btn; // unused
 			//8'h35 : keys[7][1] <= press_btn; // unused
 			//8'h1a : keys[7][2] <= press_btn; // unused
-			8'h76 : keys[7][3] <= press_btn; // STOP
+			8'h76 : begin keys[7][3] <= press_btn; keys[8][2] <= press_btn; end // STOP
 			//8'h5d : keys[7][4] <= press_btn; // \
 			8'h5a : keys[7][5] <= press_btn; // RETURN / ENTER
 			//8'h7d : keys[7][6] <= press_btn; // page up
