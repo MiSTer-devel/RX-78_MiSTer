@@ -202,6 +202,7 @@ localparam CONF_STR = {
 	"-;",
 	"OA,Swap Joysticks,Off,On;",
 	"OB,EXT RAM,Off,On;",
+	"OC,Pause,Off,On;",
 	"-;",
 	"O89,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"-;",
@@ -266,7 +267,7 @@ pll pll
 
 reg main_clk;
 always @(posedge clk_vid)
-  main_clk <= ~main_clk;
+  if (~status[12]) main_clk <= ~main_clk;
 
 
 wire reset = RESET | status[0] | buttons[1] | ioctl_download;
