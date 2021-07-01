@@ -10,8 +10,7 @@
 //
 // - is full RAM accessible when bank=0?
 // - is NMI used?
-// - is there a timer somewhere?
-// - what are the ports $23, $EF & $F3?
+// - what are the ports $23, $EF?
 //
 
 module rx78(
@@ -83,6 +82,7 @@ wire [7:0] zdi =
 
 wire [7:0] kb_rows;
 reg [7:0] kb_cols;
+reg keyboard_irq_en;
 
 // I/O
 always @(posedge clk) begin
@@ -93,8 +93,22 @@ always @(posedge clk) begin
       //8'hef: ?
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
-      //8'hf3: ?
-      8'hf4: if (~zwr) kb_cols <= zdo; else io_q <= kb_rows;
+      8'hf3:
+        if (~zwr)
+          case (zdo[1:0])
+            2'd0: irq_slow <= 6'd0;
+            2'd1: irq_slow <= 6'd3;
+            2'd2: irq_slow <= 6'd7;
+            2'd3: irq_slow <= 6'd63;
+          endcase
+      8'hf4:
+        if (~zwr) begin
+          kb_cols <= zdo;
+          keyboard_irq_en <= zdo[4];
+        end
+        else begin
+          io_q <= kb_rows;
+        end
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
       8'hf7: if (~zwr) p3 <= zdo;
@@ -262,11 +276,24 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
   .vdata(v6)
 );
 
-
+reg [5:0] irq_slow, irq_cnt;
 reg vb_latch, zint;
+reg [7:0] kb_old;
 always @(posedge main_clk) begin
   vb_latch <= vb;
-  if (~vb_latch & vb) zint <= 1'b1;
+  kb_old <= kb_rows;
+  if (~keyboard_irq_en) begin
+    if (~vb_latch & vb) begin
+      irq_cnt <= irq_cnt + 6'd1;
+      if (irq_cnt > irq_slow) begin
+        zint <= 1'b1;
+        irq_cnt <= 6'd0;
+      end
+    end
+  end
+  else if (kb_rows != 8'd0 && kb_old != kb_rows) begin
+    zint <= 1'b1;
+  end
   if (~ziorq & ~zm1) zint <= 1'b0;
 end
 
