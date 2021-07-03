@@ -83,6 +83,7 @@ wire [7:0] zdi =
 wire [7:0] kb_rows;
 reg [7:0] kb_cols;
 reg keyboard_irq_en;
+reg [7:0] kb_old, kb_new;
 
 // I/O
 always @(posedge clk) begin
@@ -97,7 +98,7 @@ always @(posedge clk) begin
         if (~zwr)
           case (zdo[1:0])
             2'd0: irq_slow <= 6'd0;
-            2'd1: irq_slow <= 6'd3;
+            2'd1: irq_slow <= 6'd0;
             2'd2: irq_slow <= 6'd7;
             2'd3: irq_slow <= 6'd63;
           endcase
@@ -108,6 +109,8 @@ always @(posedge clk) begin
         end
         else begin
           io_q <= kb_rows;
+          kb_new <= zdo;
+          kb_old <= kb_new;
         end
       8'hf5: if (~zwr) p1 <= zdo;
       8'hf6: if (~zwr) p2 <= zdo;
@@ -278,20 +281,18 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
 
 reg [5:0] irq_slow, irq_cnt;
 reg vb_latch, zint;
-reg [7:0] kb_old;
 always @(posedge main_clk) begin
   vb_latch <= vb;
-  kb_old <= kb_rows;
   if (~keyboard_irq_en) begin
     if (~vb_latch & vb) begin
       irq_cnt <= irq_cnt + 6'd1;
-      if (irq_cnt > irq_slow) begin
+      if (irq_cnt == irq_slow) begin
         zint <= 1'b1;
         irq_cnt <= 6'd0;
       end
     end
   end
-  else if (kb_rows != 8'd0 && kb_old != kb_rows) begin
+  else if (kb_new != 8'd0 && kb_old != kb_new) begin
     zint <= 1'b1;
   end
   if (~ziorq & ~zm1) zint <= 1'b0;
