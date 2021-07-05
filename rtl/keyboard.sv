@@ -56,6 +56,8 @@ assign key_data =  (addr[0] ? keys[0] : 8'b11111111)
 */
 reg  input_strobe = 0;
 
+reg start1,start2;
+
 always @(posedge clk_sys) begin
 	reg old_reset;
 	old_reset <= reset;
@@ -201,57 +203,43 @@ always @(posedge clk_sys) begin
 
    end 
     
-	/*	
-		wire m_up     = joy[3];
-wire m_down   = joy[2];
-wire m_left   = joy[1];
-wire m_right  = joy[0];
-wire m_fire   = joy[4];
-*/
+
 
 		// left  up
       if (joy1[1] & joy1[3])
 		begin
 			keys[9][1] = 1'b1;
-			keys[9][5] = 1'b1;
 		end
 		// left down
       else if (joy1[1] & joy1[2])
 		begin
 			keys[10][0] = 1'b1;
-			keys[10][4] = 1'b1;
 		end
 		// right up
       else if (joy1[0] & joy1[3])
 		begin
 			keys[10][1] = 1'b1;
-			keys[10][5] = 1'b1;
 		end
 		// right down
       else if (joy1[0] & joy1[2])
 		begin
 			keys[11][1] = 1'b1;
-			keys[11][5] = 1'b1;
 		end
 		// up
 		else if (joy1[3]) begin
 			keys[9][0] = 1'b1;
-			keys[9][4] = 1'b1;
 		end
 		// down
 		else if (joy1[2]) begin
 			keys[11][0] = 1'b1;
-			keys[11][4] = 1'b1;
 		end
 		// left
 		else if (joy1[1]) begin
 			keys[9][2] = 1'b1;
-			keys[9][6] = 1'b1;
 		end
 		// right
 		else if (joy1[0]) begin
 			keys[11][2] = 1'b1;
-			keys[11][6] = 1'b1;
 		end
 
 		
@@ -259,15 +247,49 @@ wire m_fire   = joy[4];
 		
 		if (joy1[4]) begin
 			keys[9][3]= 1'b1;
-			keys[9][7]= 1'b1;
 		end
 		// b2
 		if (joy1[5]) begin
 			keys[11][3]= 1'b1;
-			keys[11][7]= 1'b1;
 		end
 		
+		// Hacks to start games with start / select on the joystick
+		// 
 		
+		// start
+		if (joy1[6]) begin
+			start1 <= 1'b1;
+			//z, space, 1
+			keys[6][0] <= 1'b1; // space
+			keys[0][1] <= 1'b1; // 1
+			keys[5][2] <= 1'b1; // Z
+		end
+		else begin
+			if (start1==1'b1)
+			begin
+				start1<=1'b0;
+				keys[6][0] <= 1'b0; // space
+				keys[0][1] <= 1'b0; // 1
+				keys[5][2] <= 1'b0; // Z
+			end
+		end
+				
+		// x 2
+		if (joy2[6]) begin
+			start2 <= 1'b1;
+			//z, space, 1
+			keys[0][2] <= 1'b1; // 2
+			keys[5][0] <= 1'b1; // X
+		end
+		else begin
+			if (start2==1'b1)
+			begin
+				start2<=1'b0;
+				keys[0][2] <= 1'b0; // 2
+				keys[5][0] <= 1'b0; // X
+			end
+		end
+
 		
 		// joy2
 		
@@ -275,45 +297,37 @@ wire m_fire   = joy[4];
       if (joy2[1] & joy2[3])
 		begin
 			keys[12][1] = 1'b1;
-			keys[12][5] = 1'b1;
 		end
 		// left down
       else if (joy2[1] & joy2[2])
 		begin
 			keys[13][0] = 1'b1;
-			keys[13][4] = 1'b1;
 		end
 		// right up
       else if (joy2[0] & joy2[3])
 		begin
 			keys[13][1] = 1'b1;
-			keys[13][5] = 1'b1;
 		end
 		// right down
       else if (joy2[0] & joy2[2])
 		begin
 			keys[14][1] = 1'b1;
-			keys[14][5] = 1'b1;
 		end
 		// up
 		else if (joy2[3]) begin
 			keys[12][0] = 1'b1;
-			keys[12][4] = 1'b1;
 		end
 		// down
 		else if (joy2[2]) begin
 			keys[14][0] = 1'b1;
-			keys[14][4] = 1'b1;
 		end
 		// left
 		else if (joy2[1]) begin
 			keys[12][2] = 1'b1;
-			keys[12][6] = 1'b1;
 		end
 		// right
 		else if (joy2[0]) begin
 			keys[14][2] = 1'b1;
-			keys[14][6] = 1'b1;
 		end
 
 		
@@ -321,12 +335,10 @@ wire m_fire   = joy[4];
 		
 		if (joy2[4]) begin
 			keys[12][3]= 1'b1;
-			keys[12][7]= 1'b1;
 		end
 		// b2
 		if (joy2[5]) begin
 			keys[14][3]= 1'b1;
-			keys[14][7]= 1'b1;
 		end
 		
 			
