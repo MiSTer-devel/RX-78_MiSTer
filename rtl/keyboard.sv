@@ -274,6 +274,11 @@ always @(posedge clk_sys) begin
 			end
 		end
 				
+
+
+		
+		// joy2
+		
 		// x 2
 		if (joy2[6]) begin
 			start2 <= 1'b1;
@@ -289,9 +294,6 @@ always @(posedge clk_sys) begin
 				keys[5][0] <= 1'b0; // X
 			end
 		end
-
-		
-		// joy2
 		
 		// left  up
       if (joy2[1] & joy2[3])
