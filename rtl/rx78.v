@@ -124,6 +124,7 @@ always @(posedge clk) begin
     bgcolor <= 8'd0;
     mask <= 8'd0;
     cmask <= 8'd0;
+    irq_slow <= 6'd0;
   end
 end
 
@@ -279,7 +280,7 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
 
 reg [5:0] irq_slow, irq_cnt;
 reg vb_latch, zint;
-always @(posedge main_clk) begin
+always @(posedge clk) begin
   vb_latch <= vb;
   if (~vblank_irq_disabled) begin
     if (~vb_latch & vb) begin
