@@ -82,7 +82,7 @@ wire [7:0] zdi =
 
 wire [7:0] kb_rows;
 reg [7:0] kb_cols;
-reg keyboard_irq_en;
+reg vblank_irq_disabled;
 
 // I/O
 always @(posedge clk) begin
@@ -104,7 +104,7 @@ always @(posedge clk) begin
       8'hf4:
         if (~zwr) begin
           kb_cols <= zdo;
-          keyboard_irq_en <= zdo[4];
+          vblank_irq_disabled <= zdo[4];
         end
         else begin
           io_q <= kb_rows;
@@ -281,7 +281,7 @@ reg [5:0] irq_slow, irq_cnt;
 reg vb_latch, zint;
 always @(posedge main_clk) begin
   vb_latch <= vb;
-  if (~keyboard_irq_en) begin
+  if (~vblank_irq_disabled) begin
     if (~vb_latch & vb) begin
       irq_cnt <= irq_cnt + 6'd1;
       if (irq_cnt == irq_slow) begin
