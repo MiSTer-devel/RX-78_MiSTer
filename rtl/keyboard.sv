@@ -208,49 +208,49 @@ always @(posedge clk_sys) begin
 		// left  up
       if (joy1[1] & joy1[3])
 		begin
-			keys[9][1] = 1'b1;
+			keys[9][1] <= 1'b1;
 		end
 		// left down
       else if (joy1[1] & joy1[2])
 		begin
-			keys[10][0] = 1'b1;
+			keys[10][0] <= 1'b1;
 		end
 		// right up
       else if (joy1[0] & joy1[3])
 		begin
-			keys[10][1] = 1'b1;
+			keys[10][1] <= 1'b1;
 		end
 		// right down
       else if (joy1[0] & joy1[2])
 		begin
-			keys[11][1] = 1'b1;
+			keys[11][1] <= 1'b1;
 		end
 		// up
 		else if (joy1[3]) begin
-			keys[9][0] = 1'b1;
+			keys[9][0] <= 1'b1;
 		end
 		// down
 		else if (joy1[2]) begin
-			keys[11][0] = 1'b1;
+			keys[11][0] <= 1'b1;
 		end
 		// left
 		else if (joy1[1]) begin
-			keys[9][2] = 1'b1;
+			keys[9][2] <= 1'b1;
 		end
 		// right
 		else if (joy1[0]) begin
-			keys[11][2] = 1'b1;
+			keys[11][2] <= 1'b1;
 		end
 
 		
 		// b1
 		
 		if (joy1[4]) begin
-			keys[9][3]= 1'b1;
+			keys[9][3] <= 1'b1;
 		end
 		// b2
 		if (joy1[5]) begin
-			keys[11][3]= 1'b1;
+			keys[11][3] <= 1'b1;
 		end
 		
 		// Hacks to start games with start / select on the joystick
@@ -298,49 +298,49 @@ always @(posedge clk_sys) begin
 		// left  up
       if (joy2[1] & joy2[3])
 		begin
-			keys[12][1] = 1'b1;
+			keys[12][1] <= 1'b1;
 		end
 		// left down
       else if (joy2[1] & joy2[2])
 		begin
-			keys[13][0] = 1'b1;
+			keys[13][0] <= 1'b1;
 		end
 		// right up
       else if (joy2[0] & joy2[3])
 		begin
-			keys[13][1] = 1'b1;
+			keys[13][1] <= 1'b1;
 		end
 		// right down
       else if (joy2[0] & joy2[2])
 		begin
-			keys[14][1] = 1'b1;
+			keys[14][1] <= 1'b1;
 		end
 		// up
 		else if (joy2[3]) begin
-			keys[12][0] = 1'b1;
+			keys[12][0] <= 1'b1;
 		end
 		// down
 		else if (joy2[2]) begin
-			keys[14][0] = 1'b1;
+			keys[14][0] <= 1'b1;
 		end
 		// left
 		else if (joy2[1]) begin
-			keys[12][2] = 1'b1;
+			keys[12][2] <= 1'b1;
 		end
 		// right
 		else if (joy2[0]) begin
-			keys[14][2] = 1'b1;
+			keys[14][2] <= 1'b1;
 		end
 
 		
 		// b1
 		
 		if (joy2[4]) begin
-			keys[12][3]= 1'b1;
+			keys[12][3] <= 1'b1;
 		end
 		// b2
 		if (joy2[5]) begin
-			keys[14][3]= 1'b1;
+			keys[14][3] <= 1'b1;
 		end
 		
 			
