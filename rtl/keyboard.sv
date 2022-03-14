@@ -25,7 +25,6 @@ module keyboard
 reg  [7:0] keys[14:0];
 reg        press_btn = 0;
 reg  [7:0] code;
-reg		  shiftstate = 0;
 
 // Output addressed row to ULA
 always @(*) begin

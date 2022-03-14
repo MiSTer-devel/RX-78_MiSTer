@@ -16,6 +16,7 @@
 //
 //============================================================================
 
+
 module emu
 (
 	//Master input clock
@@ -26,7 +27,7 @@ module emu
 	input         RESET,
 
 	//Must be passed to hps_io module
-	inout  [45:0] HPS_BUS,
+	inout  [48:0] HPS_BUS,
 
 	//Base video clock. Usually equals to CLK_SYS.
 	output        CLK_VIDEO,
@@ -52,6 +53,7 @@ module emu
 
 	input  [11:0] HDMI_WIDTH,
 	input  [11:0] HDMI_HEIGHT,
+	output        HDMI_FREEZE,
 
 `ifdef MISTER_FB
 	// Use framebuffer in DDRAM (USE_FB=1 in qsf)
@@ -178,9 +180,9 @@ assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;  
 
-assign VGA_SL = 0;
 assign VGA_F1 = 0;
 assign VGA_SCALER = 0;
+assign HDMI_FREEZE = 0;
 
 assign LED_DISK = 0;
 assign LED_POWER = 0;
@@ -205,6 +207,7 @@ localparam CONF_STR = {
 	"OC,Pause,Off,On;",
 	"-;",
 	"O89,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+	"ODF,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;", 
 	"-;",
 	"R0,Reset;",
 	"J,Fire1,Fire2,Start;",
@@ -219,6 +222,7 @@ wire [10:0] ps2_key;
 
 wire [31:0] joy1, joy2;
 
+wire [21:0] gamma_bus;
 
 wire        ioctl_download;
 wire  [7:0] ioctl_index;
@@ -227,14 +231,12 @@ wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
 
 
-hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
+hps_io #(.CONF_STR(CONF_STR)) hps_io
 (
 	.clk_sys(clk_sys),
 	.HPS_BUS(HPS_BUS),
-	.EXT_BUS(),
-	.gamma_bus(),
+	.gamma_bus(gamma_bus),
 
-	.conf_str(CONF_STR),
 	.forced_scandoubler(forced_scandoubler),
 
 	.ioctl_download(ioctl_download),
@@ -244,7 +246,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.ioctl_index(ioctl_index),
 	
 	.joystick_0(joy1),
-  .joystick_1(joy2),
+	.joystick_1(joy2),
 	
 	
 	.buttons(buttons),
@@ -265,9 +267,6 @@ pll pll
 	.outclk_1(clk_vid)
 );
 
-reg main_clk;
-always @(posedge clk_vid)
-  if (~status[12]) main_clk <= ~main_clk;
 
 
 wire reset = RESET | status[0] | buttons[1] | ioctl_download;
@@ -279,7 +278,6 @@ wire HBlank;
 wire HSync;
 wire VBlank;
 wire VSync;
-wire ce_pix;
 wire [7:0] video;
 
 wire [10:0] sound;
@@ -305,13 +303,13 @@ rx78 rx78(
 	.hb(HBlank),
 	.vb(VBlank),
 	.px(),
-	.red(VGA_R),
-	.green(VGA_G),
-	.blue(VGA_B),
+	.red(R),
+	.green(G),
+	.blue(B),
 	
 	.sound(sound),
 	
-  .ps2_key(ps2_key),
+	.ps2_key(ps2_key),
 	.joy1(rx78_joy1),
 	.joy2(rx78_joy2),
 	
@@ -326,12 +324,40 @@ rx78 rx78(
 
 );
 
-assign CLK_VIDEO = clk_vid;
-assign CE_PIXEL = 1'b1;
+reg main_clk;
+always @(posedge clk_vid)
+  if (~status[12]) main_clk <= ~main_clk;
 
-assign VGA_DE = ~(HBlank | VBlank);
-assign VGA_HS = HSync;
-assign VGA_VS = VSync;
+reg ce_pix;
+always @(posedge CLK_VIDEO) begin
+	reg [2:0] div = 0;
+
+	div <= div + 1'd1;
+	ce_pix <=  &div ;
+end
+
+
+assign CLK_VIDEO = clk_sys;
+
+
+wire [2:0] scale = status[15:13];
+wire [2:0] sl = scale ? scale - 1'd1 : 3'd0;
+wire       scandoubler = (scale || forced_scandoubler);
+assign VGA_SL = sl[1:0];
+
+wire [7:0] R;
+wire [7:0] G;
+wire [7:0] B;
+
+video_mixer #( .GAMMA(1)) video_mixer
+(
+	.*,
+
+	.hq2x(scale==1),
+	.freeze_sync()
+
+
+);
 
 
 endmodule
