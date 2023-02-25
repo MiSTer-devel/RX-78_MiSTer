@@ -22,8 +22,8 @@ always @(posedge clk) begin
   case (hcount)
     0: hb <= 1'b0;
     256: hb <= 1'b1;
-    274: hs <= 1'b0;
-    299: hs <= 1'b1;
+    324: hs <= 1'b0;
+    349: hs <= 1'b1;
     442: begin
       vcount <= vcount + 9'd1;
       hcount <= 9'b0;
