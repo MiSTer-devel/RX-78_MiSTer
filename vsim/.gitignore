@@ -1,0 +1,12 @@
+obj_dir/
+rom.mem
+audio.wav
+imgui.ini
+
+# Generated screenshots and traces. shots-ref/ IS tracked on purpose -- it is
+# the visual baseline run_tests.sh compares against.
+shots/
+*.png
+*.log
+!shots-ref/
+!shots-ref/*.png
