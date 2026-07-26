@@ -21,7 +21,7 @@
 // color register at I/O $FC.
 //
 
-module vdp #(parameter BDC=24'h000000) (
+module vdp (
   input clk,
   input vclk,
   input [8:0] h,
@@ -113,9 +113,14 @@ always @(posedge clk) begin
     end
     4'd4: begin
 
-      red   <= screen ? |layer2 ? r2 : |layer1 ? r1 : r0 : BDC[23:16];
-      green <= screen ? |layer2 ? g2 : |layer1 ? g1 : g0 : BDC[15:8];
-      blue  <= screen ? |layer2 ? b2 : |layer1 ? b1 : b0 : BDC[7:0];
+      // Outside the 192x184 active area the background colour register ($fc)
+      // keeps driving the raster -- there is no separate border generator in
+      // this hardware. MAME does the same: it fills the border with pen 64,
+      // which vdp_bg_reg_w writes from $fc. This used to be hardwired black.
+      // TODO.md T8.
+      red   <= (screen && |layer2) ? r2 : (screen && |layer1) ? r1 : r0;
+      green <= (screen && |layer2) ? g2 : (screen && |layer1) ? g1 : g0;
+      blue  <= (screen && |layer2) ? b2 : (screen && |layer1) ? b1 : b0;
 
       state <= 4'd0;
 

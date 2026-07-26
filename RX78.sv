@@ -298,6 +298,7 @@ rx78 rx78(
 	.reset(reset),
 	.clk(clk_sys),
 	.main_clk(main_clk),
+	.snd_cen(snd_cen),
 	.vclk(clk_vid),
 	.cen(1),
 	.h(),
@@ -328,9 +329,48 @@ rx78 rx78(
 
 );
 
-reg main_clk;
-always @(posedge clk_vid)
-  if (~status[12]) main_clk <= ~main_clk;
+//////////////////////////////////////////////////////////////////
+// CPU and sound clocking
+//
+// The RX-78 runs a 28.63636 MHz master and divides it three ways:
+//   Z80      master / 7 = 4.090909 MHz   (Bandai's manual: "Z-80A' (4.1MHz)")
+//   SN76489  master / 8 = 3.579545 MHz
+//   pixel    master / 4 = 7.159091 MHz
+//
+// clk_sys is 8x the pixel clock, so relative to it: CPU = /14, sound = /16.
+// Those ratios are what matter and they are now exact. The core used to run
+// the CPU *and* the PSG from one clk_vid/2 clock, which made the CPU ~14% slow
+// and welded its speed to the audio pitch. See TODO.md T2.
+//
+// The absolute frequencies are still 2.2% low because the PLL produces 56 MHz
+// rather than 57.272727 MHz (= 2 x master). Correcting that also moves the
+// refresh from 60.08 Hz to 61.45 Hz, which is a display-compatibility decision
+// for the core authors -- see TODO.md T12. Change both PLL output frequencies
+// in rtl/pll/pll_0002.v together if you want it.
+//////////////////////////////////////////////////////////////////
+
+// CPU clock: clk_sys / 14, i.e. toggle every 7 cycles. status[12] is Pause.
+reg [2:0] cpu_div = 3'd0;
+reg       main_clk = 1'b0;
+always @(posedge clk_sys) begin
+	if (~status[12]) begin
+		if (cpu_div == 3'd6) begin
+			cpu_div  <= 3'd0;
+			main_clk <= ~main_clk;
+		end
+		else cpu_div <= cpu_div + 3'd1;
+	end
+end
+
+// Sound: one clock enable every 16 clk_sys cycles. jt89 latches register
+// writes at the full clk rate and only advances its synthesis on clk_en, so
+// it wants an enable rather than its own clock.
+reg [3:0] snd_div = 4'd0;
+reg       snd_cen = 1'b0;
+always @(posedge clk_sys) begin
+	snd_div <= snd_div + 4'd1;
+	snd_cen <= (snd_div == 4'd0) & ~status[12];
+end
 
 reg ce_pix;
 always @(posedge CLK_VIDEO) begin

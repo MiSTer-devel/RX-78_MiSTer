@@ -26,21 +26,29 @@ reg  [7:0] keys[14:0];
 reg        press_btn = 0;
 reg  [7:0] code;
 
-// Output addressed row to ULA
+// Output addressed row.
+//
+// Only the low nibble of the $f4 write selects the column; bit 4 is the
+// vblank-IRQ mask (handled in rx78.v) and the upper bits are don't-care.
+// Column 0 reads back the OR of every column.
+//
+// That one rule covers both values software actually uses:
+//   $30 - documented by Takeda as "the OR of all columns" (docs/ref/takeda)
+//   $10 - written by gundam and exbaseb, which then poll $f4 forever
+// Decoding $30 literally and returning 0 for everything else left those games
+// permanently unable to see a key. See TODO.md T13.
+//
+// The OR spans all 15 rows, joysticks included, per Takeda's doc and eRX-78
+// keyboard.cpp (status[15] = OR of status[0..14]). MAME ORs only rows 1-9;
+// that difference decides whether a joystick can wake a sleeping game.
 always @(*) begin
-	kb_rows<=8'h0;
-	
-	
-	if (addr == 'h30) begin
-		kb_rows <= keys[0] | keys[1] | keys[2] | keys[3] | keys[4] | keys[5] | keys[6] | keys[7] | keys[8] | keys[9] | keys[10] | keys[11] | keys[12]| keys[13] | keys[14]; // need up to 15 here
-	end
-	else if (addr >= 1 && addr <=15) begin
-		kb_rows <= keys[addr-1];
+	if (addr[3:0] == 4'd0) begin
+		kb_rows = keys[0]  | keys[1]  | keys[2]  | keys[3]  | keys[4]  |
+		          keys[5]  | keys[6]  | keys[7]  | keys[8]  | keys[9]  |
+		          keys[10] | keys[11] | keys[12] | keys[13] | keys[14];
 	end else begin
-		kb_rows <= 0;
+		kb_rows = keys[addr[3:0] - 4'd1];
 	end
-	
-
 end
 /*
   reg [7:0] key_data;
@@ -57,19 +65,60 @@ reg  input_strobe = 0;
 
 reg start1,start2;
 
+// ---------------------------------------------------------------------------
+// Joystick decode
+//
+// Each stick occupies three matrix columns. Within a group (Takeda's key map,
+// docs/ref/takeda/tech-en.md):
+//
+//   col A : b0 up        b1 up-left    b2 left    b3 button1
+//   col B : b0 down-left b1 up-right   --         --
+//   col C : b0 down      b1 down-right b2 right   b3 button2
+//
+// and every one of those signals appears TWICE in the byte -- once in the low
+// nibble and again in the matching bit of the high nibble. eRX-78
+// keyboard.cpp does exactly this: 0x11 for up, 0x22 for up-left, 0x44 for
+// left, 0x88 for button 1. Neither MAME nor this core mirrored the nibbles,
+// so software reading the upper half saw a dead stick. See TODO.md T4.
+//
+// Directions are mutually exclusive (8-way); buttons are independent.
+// ---------------------------------------------------------------------------
+function automatic [11:0] joy_decode(input [31:0] j);
+	reg [3:0] a, b, c;
+	begin
+		a = 4'd0; b = 4'd0; c = 4'd0;
+		if      (j[1] & j[3]) a[1] = 1'b1;   // left  + up
+		else if (j[1] & j[2]) b[0] = 1'b1;   // left  + down
+		else if (j[0] & j[3]) b[1] = 1'b1;   // right + up
+		else if (j[0] & j[2]) c[1] = 1'b1;   // right + down
+		else if (j[3])        a[0] = 1'b1;   // up
+		else if (j[2])        c[0] = 1'b1;   // down
+		else if (j[1])        a[2] = 1'b1;   // left
+		else if (j[0])        c[2] = 1'b1;   // right
+		if (j[4]) a[3] = 1'b1;               // button 1
+		if (j[5]) c[3] = 1'b1;               // button 2
+		joy_decode = {c, b, a};
+	end
+endfunction
+
+wire [11:0] j1d = joy_decode(joy1);
+wire [11:0] j2d = joy_decode(joy2);
+
 always @(posedge clk_sys) begin
 	reg old_reset;
 	old_reset <= reset;
 
-	// joystick needs to be reset each time
-	keys[9]  <= 8'h00;
-	keys[10] <= 8'h00;
-	keys[11] <= 8'h00;
-	keys[12] <= 8'h00;
-	keys[13] <= 8'h00;
-	keys[14] <= 8'h00;
+	// Joystick rows are rebuilt from scratch every cycle, low nibble mirrored
+	// into the high nibble. keys[9..11] are matrix columns 10-12 (stick 1),
+	// keys[12..14] are columns 13-15 (stick 2).
+	keys[9]  <= {j1d[3:0],   j1d[3:0]};
+	keys[10] <= {j1d[7:4],   j1d[7:4]};
+	keys[11] <= {j1d[11:8],  j1d[11:8]};
+	keys[12] <= {j2d[3:0],   j2d[3:0]};
+	keys[13] <= {j2d[7:4],   j2d[7:4]};
+	keys[14] <= {j2d[11:8],  j2d[11:8]};
 
-	
+
 	if(~old_reset & reset) begin
 		keys[0]  <= 8'h00;
 		keys[1]  <= 8'h00;
@@ -204,54 +253,8 @@ always @(posedge clk_sys) begin
     
 
 
-		// left  up
-      if (joy1[1] & joy1[3])
-		begin
-			keys[9][1] <= 1'b1;
-		end
-		// left down
-      else if (joy1[1] & joy1[2])
-		begin
-			keys[10][0] <= 1'b1;
-		end
-		// right up
-      else if (joy1[0] & joy1[3])
-		begin
-			keys[10][1] <= 1'b1;
-		end
-		// right down
-      else if (joy1[0] & joy1[2])
-		begin
-			keys[11][1] <= 1'b1;
-		end
-		// up
-		else if (joy1[3]) begin
-			keys[9][0] <= 1'b1;
-		end
-		// down
-		else if (joy1[2]) begin
-			keys[11][0] <= 1'b1;
-		end
-		// left
-		else if (joy1[1]) begin
-			keys[9][2] <= 1'b1;
-		end
-		// right
-		else if (joy1[0]) begin
-			keys[11][2] <= 1'b1;
-		end
+		// Stick 1 directions and buttons are decoded above by joy_decode().
 
-		
-		// b1
-		
-		if (joy1[4]) begin
-			keys[9][3] <= 1'b1;
-		end
-		// b2
-		if (joy1[5]) begin
-			keys[11][3] <= 1'b1;
-		end
-		
 		// Hacks to start games with start / select on the joystick
 		// 
 		
@@ -294,58 +297,8 @@ always @(posedge clk_sys) begin
 			end
 		end
 		
-		// left  up
-      if (joy2[1] & joy2[3])
-		begin
-			keys[12][1] <= 1'b1;
-		end
-		// left down
-      else if (joy2[1] & joy2[2])
-		begin
-			keys[13][0] <= 1'b1;
-		end
-		// right up
-      else if (joy2[0] & joy2[3])
-		begin
-			keys[13][1] <= 1'b1;
-		end
-		// right down
-      else if (joy2[0] & joy2[2])
-		begin
-			keys[14][1] <= 1'b1;
-		end
-		// up
-		else if (joy2[3]) begin
-			keys[12][0] <= 1'b1;
-		end
-		// down
-		else if (joy2[2]) begin
-			keys[14][0] <= 1'b1;
-		end
-		// left
-		else if (joy2[1]) begin
-			keys[12][2] <= 1'b1;
-		end
-		// right
-		else if (joy2[0]) begin
-			keys[14][2] <= 1'b1;
-		end
+		// Stick 2 directions and buttons are decoded above by joy_decode().
 
-		
-		// b1
-		
-		if (joy2[4]) begin
-			keys[12][3] <= 1'b1;
-		end
-		// b2
-		if (joy2[5]) begin
-			keys[14][3] <= 1'b1;
-		end
-		
-			
-
-		
-		
 end
 
 always @(posedge clk_sys) begin

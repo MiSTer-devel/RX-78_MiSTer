@@ -8,13 +8,20 @@ I would like to thank Reenthused (Johnny Blanchard) and Hubz (Dustin Hubbard) fo
 
 There's no cassette support yet.
 
-For 32k cartridge support, please activate the EXT RAM in OSD.
+32k cartridges are detected automatically — you no longer need to enable EXT RAM for them.
+
+There is a Verilator simulation in `vsim/` that boots a cartridge, injects keys and joystick input,
+writes PNG screenshots and traces the I/O ports. Use it before building an `.rbf`; see
+`vsim/README.md`.
+
+Accuracy work is tracked in `TODO.md`, with the source documents it is based on vendored in
+`docs/ref/`. Read `docs/ref/README.md` before changing emulated behaviour — the three existing
+emulators disagree with each other and MAME is not a specification.
 
 To do list:
-- Fix the choppy sound on Gundam title screen.
 - Add cassette support and ADC in.
+- Work out what ports $23, $ef and $fd do (every cartridge writes $23 and $ef at boot; four write $fd).
 - Add game identification mechanism to support for different joystick mappings.
-- Identify & implement the missing I/O ports.
 - VGA output works but hsync timing seems wrong.
 
 
