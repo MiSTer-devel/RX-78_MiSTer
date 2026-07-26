@@ -204,4 +204,37 @@ always @(posedge clk) begin
 	end
 end
 
+// The chip's clock, 180 degrees from the controller's. Commands are launched on
+// the rising edge of `clk` and the chip latches them half a period later, which
+// is where the setup/hold window sits. Driving it out of a DDIO cell rather than
+// routing `clk` through the fabric keeps that half-period fixed after fitting.
+//
+// This block is part of Sorgelig's original and was missing from the copy this
+// core inherited, so SDRAM_CLK had no driver at all: Quartus tied pin AD20 to a
+// constant and the memory never saw a clock edge.
+altddio_out
+#(
+	.extend_oe_disable("OFF"),
+	.intended_device_family("Cyclone V"),
+	.invert_output("OFF"),
+	.lpm_hint("UNUSED"),
+	.lpm_type("altddio_out"),
+	.oe_reg("UNREGISTERED"),
+	.power_up_high("OFF"),
+	.width(1)
+)
+sdramclk_ddr
+(
+	.datain_h(1'b0),
+	.datain_l(1'b1),
+	.outclock(clk),
+	.dataout(SDRAM_CLK),
+	.aclr(1'b0),
+	.aset(1'b0),
+	.oe(1'b1),
+	.outclocken(1'b1),
+	.sclr(1'b0),
+	.sset(1'b0)
+);
+
 endmodule

@@ -44,7 +44,8 @@ module cassette (
   output reg        tape_bit,      // 1 = above threshold -> rx78 tape_in
   output reg        motor,
   output      [3:0] status,
-  output reg [31:0] play_pos,      // samples played, for the OSD
+  // Both in bytes into the data chunk, not sample frames -- see play_len below.
+  output reg [31:0] play_pos,      // position, for the OSD
   output reg [31:0] play_len
 );
 
@@ -91,7 +92,16 @@ module cassette (
   // Bytes per sample frame, and which byte inside the frame to threshold.
   // 8-bit PCM is unsigned (mid = 0x80); 16-bit is signed little-endian, so the
   // high byte carries the sign and "above threshold" is the inverse of it.
-  wire [7:0]  frame_stride = (wav_bits[15:0] >> 3) * wav_channels[7:0];
+  //
+  // Registered, not a wire: it feeds the playback address adder, and the fitter
+  // should not have to push a shift and a multiply through that path. A malformed
+  // fmt chunk could compute zero here, which would stall playback forever, so
+  // clamp it to one byte.
+  wire [7:0]  stride_calc  = (wav_bits[15:0] >> 3) * wav_channels[7:0];
+  reg  [7:0]  frame_stride;
+  always @(posedge clk_sys)
+    frame_stride <= (stride_calc == 8'd0) ? 8'd1 : stride_calc;
+
   wire        is16         = (wav_bits == 16'd16);
   wire [24:0] sample_off   = is16 ? 25'd1 : 25'd0;
 
@@ -253,10 +263,15 @@ module cassette (
         // Leaving the parser: work out the length and arm playback.
         if (state == S_PARSE && pstate == P_DONE) begin
           state <= (wav_rate == 32'd0) ? S_BAD : S_READY;
-          // Clamp the data chunk to what actually got loaded.
+          // Clamp the data chunk to what actually got loaded. Counted in bytes,
+          // not sample frames: dividing by frame_stride here inferred a 32-bit
+          // combinational divider, 73 ns of logic in one 17.9 ns clk_sys cycle.
+          // It was the only path in the design that failed timing, and on
+          // hardware it latched a garbage length -- playback ended immediately
+          // and the monitor waited on a tape that never moved.
           play_len <= ((data_start + data_bytes[24:0]) > image_size)
-                        ? ((image_size - data_start) / frame_stride)
-                        : (data_bytes / frame_stride);
+                        ? {7'd0, (image_size - data_start)}
+                        : data_bytes;
           play_pos <= 32'd0;
           phase    <= 32'd0;
         end
@@ -269,7 +284,7 @@ module cassette (
           S_FETCH: begin
             if (play_pos >= play_len) state <= S_END;
             else begin
-              sdram_addr <= data_start + (play_pos[24:0] * frame_stride) + sample_off;
+              sdram_addr <= data_start + play_pos[24:0] + sample_off;
               sdram_rd   <= 1'b1;
               state      <= S_WAIT;
             end
@@ -284,7 +299,7 @@ module cassette (
           S_PLAY: begin
             if (sample_tick) begin
               phase    <= phase - clk_rate + wav_rate;
-              play_pos <= play_pos + 32'd1;
+              play_pos <= play_pos + {24'd0, frame_stride};
               state    <= S_FETCH;
             end
             else phase <= phase + wav_rate;

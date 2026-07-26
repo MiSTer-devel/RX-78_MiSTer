@@ -44,6 +44,39 @@ What was built:
   latches the image size, rewinds on mount, and mixes the tape into the audio so a load is audible.
 - OSD: `F2,WAV,Load Tape`, `Tape Sound`, `Tape Rewind`.
 
+### Hardware bring-up: two defects the simulator could not see
+
+The first `.rbf` hung on every tape while `vsim` loaded both dumps. Neither fault is visible in
+simulation, and both are worth remembering as a class. With both fixed, Yellow Cab loads and runs
+on real hardware — `FOUND CAB` / `LOADING CAB` and the tone audible through **Tape Sound**:
+
+1. **`SDRAM_CLK` had no driver.** `rtl/sdram.sv` came from `BasicMasterJr_MiSTer`, which drives the
+   pin at its *top level* (`assign SDRAM_CLK = clk_sys;`) and leaves the module port dangling
+   (`.SDRAM_CLK()`). `RX78.sv` instead wired the port straight to the pin — so nothing drove it,
+   Quartus tied AD20 to a constant, and the memory never saw a clock edge. Every tape byte read back
+   was whatever the floating bus happened to hold. Restored Sorgelig's original `altddio_out` block,
+   which is present in the copies in `Amstrad_MiSTer`, `Apple-II-Verilog_MiSTer` and
+   `Apple-IIgs_MiSTer` and generates the chip clock 180° from the controller's.
+   The behavioural model in `vsim/rtl/sdram.sv` has no `SDRAM_*` pins at all, so simulation can
+   never catch this — check the fitter's pin report, not the waveform.
+
+2. **A combinational 32-bit divider in `cassette.v`.** `play_len` was `data_bytes / frame_stride`,
+   which inferred 73 ns of logic that had to settle in one 17.9 ns `clk_sys` cycle. It was the
+   *only* failing path in the design: worst-case setup slack **-55.5 ns**, TNS -768, all of it on
+   `play_len[31:0]`. On hardware it latched a garbage length, so playback ended immediately and the
+   monitor waited on a tape that never moved. Fixed by counting the position in **bytes** rather
+   than sample frames, which removes the divider and the `play_pos * frame_stride` multiplier in the
+   address path together. Verilator has no timing model, so this too was invisible in `vsim`.
+
+   Equivalence was checked with a standalone bench (cassette.v + the behavioural SDRAM, fed
+   synthetic WAVs at 8-bit mono / 16-bit mono / 16-bit stereo): `tape_bit` produces an identical
+   edge count before and after, and the tape now stops exactly on the end of the data chunk for
+   every stride.
+
+Both were introduced by the commit that added tape support and had never been through Quartus —
+that commit's own note said as much. **Run a fit and read `output_files/*.sta.rpt` before shipping
+an `.rbf`;** a clean `vsim` run says nothing about either failure mode.
+
 **Original analysis follows** — it is what the implementation was built from.
 
 **Provenance:** all three implementations agree the port exists and what it does.
