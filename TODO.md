@@ -601,6 +601,49 @@ Known limits: ~12 simulated frames/sec; no audio verification beyond a debug wav
 `shots-ref/` baseline is a record of *current* behaviour, not of correct behaviour — nine of the
 thirteen carts in it are wedged.
 
+## T26. Joystick: the decode is right, but most games do not read it ✅/❓
+
+**The matrix decode is verified.** Every joystick input produces the mirrored nibble pair Takeda's
+table specifies, on both ports — measured with `vsim`, one input at a time:
+
+| input | matrix bits | column group |
+|---|---|---|
+| up, down | `$11` | A / C |
+| left, right | `$44` | A / C |
+| up-left, up-right, down-right | `$22` | A / B / C |
+| down-left | `$11` | B |
+| fire1, fire2 | `$88` | A / C |
+
+That closes T4 empirically rather than by documentation alone.
+
+**But almost no game reads those columns.** `vsim/joy_test.sh` runs each cart twice — documented
+keyboard sequence to reach gameplay, then the same run with a direction and button held — and
+compares the framebuffer:
+
+| cart | ours | MAME | agree? |
+|---|---|---|---|
+| prowres | responds | responds | ✅ |
+| extennis | responds | responds | ✅ |
+| gundam | no change | **no change** | ✅ |
+| ultraman | I/O differs, screen same | — | — |
+| senemy, golf, racer, exbaseball, motocross, abcword | no change | — | keyboard-only |
+| mahjong | responds | no change | ❓ (ours is wedged, T24 — not comparable) |
+
+**Mobile Suit Gundam is the interesting one.** `readme.md` says "Z,X,Space; or Left,Right,Alt or
+Joystick", but traced in-game it only ever writes `$f4 <- $06` and `$f4 <- $07` — keyboard columns 6
+and 7 (Z/X, and SPACE/arrows). **It never selects columns 10-12, where joystick 1 lives.** MAME
+behaves identically: holding P1 Right + Button 1 leaves its framebuffer byte-identical. So this is
+not a core bug — the readme's "or Joystick" refers to the *start-button hack* in `keyboard.sv`, which
+injects Z/Space/1 into the keyboard rows and does measurably work (+1085 I/O cycles).
+
+**What is actually missing** is the thing `readme.md` has always listed as a to-do: a per-game
+joystick mapping. For a title that reads columns 6/7 the stick has to be mapped onto the *arrow
+keys*, not the joystick rows. That needs game identification, because the right mapping differs per
+title — Pro Wrestling and Excite Tennis read the real joystick rows and would break if remapped.
+
+Nothing to fix in the decode. Next step, if wanted: extend the existing start-button hack in
+`keyboard.sv` into a proper per-game mapping table, selected by cartridge hash.
+
 ## T25. The simulator and the hardware run different Z80 cores ⚠️
 
 **`vsim` has been testing a CPU the `.rbf` does not contain.** `rtl/rx78.v` picks the core with

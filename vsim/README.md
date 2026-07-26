@@ -126,6 +126,28 @@ tape (sdram)      : 4625684 $f0 accesses, sample 3537583 of 3613696, motor 0, st
 end is normal: the motor is inferred from `$f0` activity, so it stops once the loaded program takes
 over and stops reading.
 
+## Joystick
+
+```sh
+./joy_test.sh              # every cart, ~20 min
+./joy_test.sh gundam       # substring filter
+```
+
+Runs each cart twice — documented keyboard sequence to reach gameplay, then the same run with a
+direction and button held — and byte-compares the framebuffer. `"no change"` on a keyboard-only
+title is the expected result, not a failure; see `TODO.md` T26 for which games read the stick at all.
+
+To check the decode itself rather than a game, hold one input and read the matrix line:
+
+```sh
+./obj_dir/Vemu --headless --cart ../software/MobileSuitGundam.bin --joy1 60:up --stop-at-frame 85 \
+  | grep matrix
+#   kb matrix (any)   : $11
+```
+
+`$11` for up/down, `$44` for left/right, `$22` for diagonals, `$88` for the buttons — the mirrored
+nibble pairs from Takeda's table. Anything else means the T4 decode has regressed.
+
 ## Regression sweep
 
 ```sh

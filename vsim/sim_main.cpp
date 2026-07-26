@@ -553,7 +553,7 @@ static void print_run_stats() {
 			       tape.rate ? (double)tape.bits.size() / tape.rate : 0.0,
 			       tape.accesses ? "" : "   <- the machine never touched $f0");
 		else
-			printf("tape (sdram)      : %ld $f0 accesses, sample %u of %u, motor %d, state %d%s\n",
+			printf("tape (sdram)      : %ld $f0 accesses, byte %u of %u, motor %d, state %d%s\n",
 			       tape.accesses, top->tape_pos, top->tape_len, top->tape_motor,
 			       top->tape_status,
 			       (top->tape_status == 11) ? "   <- S_BAD: header not understood" : "");
