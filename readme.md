@@ -12,9 +12,9 @@ There is a Verilator simulation in `vsim/` that boots a cartridge, injects keys 
 writes PNG screenshots and traces the I/O ports. Use it before building an `.rbf`; see
 `vsim/README.md`.
 
-Accuracy work is tracked in `TODO.md`, with the source documents it is based on vendored in
-`docs/ref/`. Read `docs/ref/README.md` before changing emulated behaviour — the three existing
-emulators disagree with each other and MAME is not a specification.
+Accuracy work is tracked in `TODO.md`, which cites every source it is based on by URL. Read it
+before changing emulated behaviour — the three existing emulators disagree with each other and MAME
+is not a specification.
 
 To do list:
 - Save to tape (`*S`) and real tape in via the ADC.

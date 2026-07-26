@@ -33,7 +33,7 @@ reg  [7:0] code;
 // Column 0 reads back the OR of every column.
 //
 // That one rule covers both values software actually uses:
-//   $30 - documented by Takeda as "the OR of all columns" (docs/ref/takeda)
+//   $30 - documented by Takeda as "the OR of all columns"
 //   $10 - written by gundam and exbaseb, which then poll $f4 forever
 // Decoding $30 literally and returning 0 for everything else left those games
 // permanently unable to see a key. See TODO.md T13.
@@ -69,7 +69,7 @@ reg start1,start2;
 // Joystick decode
 //
 // Each stick occupies three matrix columns. Within a group (Takeda's key map,
-// docs/ref/takeda/tech-en.md):
+// see TODO.md Sources, [TAKEDA]):
 //
 //   col A : b0 up        b1 up-left    b2 left    b3 button1
 //   col B : b0 down-left b1 up-right   --         --

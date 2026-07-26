@@ -361,7 +361,7 @@ dpram #(.addr_width(13), .data_width(8)) vram6(
 
 
 // The machine has two interrupt sources. Bandai's spec sheet lists them as
-// "key and timer interrupts" (docs/ref/manuals/spec-page-en.md):
+// "key and timer interrupts" (see TODO.md Sources, [MANUAL]):
 //
 //   timer - vblank, optionally divided down by $f3. Masked by $f4 bit 4.
 //   key   - while the vblank interrupt is masked, a key held in the currently

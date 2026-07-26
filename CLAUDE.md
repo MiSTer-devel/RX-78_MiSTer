@@ -1,7 +1,7 @@
 # CLAUDE.md — Bandai RX-78 core for MiSTer FPGA
 
-Guidance for working in this repo. Read `TODO.md` for the prioritised accuracy work and
-`docs/ref/README.md` before changing any emulated behaviour.
+Guidance for working in this repo. Read `TODO.md` for the prioritised accuracy work — including its
+Sources section — before changing any emulated behaviour.
 
 ## What this is
 
@@ -37,9 +37,8 @@ verilator/           OLD Verilator testbench. Stale: tb.cpp drives cpu_clk and
                      snd_clk ports that rtl/rx78.v no longer has. Use vsim/.
 releases/            Prebuilt .rbf files
 software/            Cart dumps and tape WAVs for testing (not part of the build)
-docs/ref/            Hardware documentation and reference emulator sources — see below
-mame/                A full local MAME checkout used only as reference. Untracked, not part of
-                     the core. `docs/ref/mame/` holds the snapshot that matters.
+mame/                A full local MAME checkout, used only as reference. Untracked and
+                     gitignored; several GB. Not part of the core.
 ```
 
 ## Building
@@ -120,9 +119,9 @@ comment, and much of its video model was fitted by eye to make particular games 
 
 Before changing any emulated behaviour:
 
-1. Read `docs/ref/manuals/spec-page-en.md` (Bandai's own specification — the only primary source),
-   then the relevant part of `docs/ref/takeda/tech-en.md` (the register-level hardware document) and
-   the matching file in `docs/ref/emulators/cscp-rx78/` (a fully independent 2006 implementation).
+1. Read the relevant entry in `TODO.md`, then the sources it cites (listed with URLs in that file's
+   Sources section): Bandai's manual is the only primary source, Takeda's page is the only
+   register-level document, and eRX-78 is a fully independent 2006 implementation.
 2. Check what `TODO.md` already records about that item — every entry is tagged with a provenance
    verdict and the sources behind it.
 3. Prefer changes where **two independent sources agree**. Be very cautious where they don't.
@@ -148,4 +147,4 @@ diff.
   deliberately.
 - OSD options live in `CONF_STR` in `RX78.sv`; the bit indices in the string must match the
   `status[...]` uses below it.
-- `docs/ref/` is deliberately exempted from the `*.xml` ignore rule in `.gitignore`.
+- Reference documents are not vendored — see the note in `.gitignore` and `TODO.md`'s Sources.

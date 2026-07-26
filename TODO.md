@@ -2,7 +2,7 @@
 
 Derived from a line-by-line comparison of `rtl/` against MAME's `rx78.cpp`, Takeda Toshiya's
 `eRX-78` emulator, Takeda's hardware analysis, and **Bandai's own user-manual specification page**.
-All sources are vendored in `docs/ref/` — see `docs/ref/README.md` for the reliability ranking.
+Every source is cited by URL in the Sources section at the end, with a reliability order.
 
 **Every item carries a provenance verdict.** The point is to fix what is genuinely wrong on hardware
 and *not* to import MAME's guesses. MAME's RX-78 driver is still `MACHINE_NOT_WORKING`, its `$f3`
@@ -54,7 +54,7 @@ What was built:
 **The cassette interface is physically on the BS-BASIC cartridge, not in the main unit.** Bandai's
 spec page lists the cartridge types as "various program ROM cartridges (games etc.)" and
 "**BS-BASIC cartridge (with cassette interface included)**". That is why every cassette title in
-`docs/ref/mame/rx78_cass.xml` carries `sharedfeat requirement rx78_cart:basic`. Decoding `$f0`
+MAME's `hash/rx78_cass.xml` carries `sharedfeat requirement rx78_cart:basic`. Decoding `$f0`
 unconditionally is a harmless simplification, but this is the reason tape and BASIC are coupled.
 `software/bs-basic.bin` is present for testing.
 
@@ -661,5 +661,26 @@ order:
 5. **T12** — actual raster timing and refresh rate.
 6. **T21** — photograph the PCB and count/identify the RAM chips against the 15 × 2 KB claim.
 
-Anything measured here should be written into `docs/ref/` as a first-class source — it would
-immediately outrank everything else in the folder.
+Anything measured here should be written into this file as a first-class source — it would
+immediately outrank every document listed in Sources.
+
+---
+
+## Sources
+
+None of these are vendored here — the manual scan and the eRX-78 sources are not ours to
+redistribute. Fetch them locally if you want them offline; nothing in this file assumes you have.
+
+| Ref | What | Where |
+|-----|------|-------|
+| **[MANUAL]** | Bandai's RX-78 user manual. Page 20 is the technical specification and the only primary source: `Z-80A' (4.1MHz)`, 30 KB shared RAM as 15 x 2 KB SRAM, "key and timer interrupts", "priority assignable among the 6 screens", two 60-pin cartridge slots, BS-BASIC cart "with cassette interface included". | <https://archive.org/details/bandai-rx-78-gundam-manual-scans> |
+| **[TAKEDA]** | Toshiya Takeda's RX-78 analysis: the I/O register map, the keyboard/joystick matrix, the memory map. Shift-JIS. Carries the author's own "accuracy not guaranteed" disclaimer, and is wrong about the palette intensity bits (see T14). | <http://takeda-toshiya.my.coocan.jp/rx78/tech.html> |
+| **[eRX-78]** | Takeda's emulator, in the Common Source Code Project. A complete second implementation, independent of MAME, 2006. The files that matter are `src/vm/rx78/{rx78,vdp,memory,keyboard,cmt,printer}.cpp` plus the shared `src/vm/datarec.cpp`. | <https://github.com/tautologico/common-src-project> |
+| **[MAME]** | `src/mame/bandai/rx78.cpp` and the software lists `hash/rx78_cart.xml`, `hash/rx78_cass.xml`. Still `MACHINE_NOT_WORKING`. Commit `06b26a0f55a` ("fixed loading of real tapes") is the one behaviour here validated against real media. | <https://github.com/mamedev/mame> |
+| **[Z88DK]** | Independent confirmation of the clocks: Z80 4.090909 MHz, SN76489 3.579545 MHz. | <https://github.com/z88dk/z88dk/wiki/Platform-Bandai-RX-78> |
+| **[GA]** | Gaming Alexandria's preservation write-up; source of the tape dumps. | <https://www.gamingalexandria.com/wp/2021/02/bandai-rx-78-gundam-computer-games-preserved/> |
+
+**Reliability order** when two disagree: [MANUAL] (primary, but system-level only, no registers) >
+behaviour validated against real media (only MAME's tape polarity qualifies) > [TAKEDA] and [eRX-78]
+agreeing > [eRX-78] source > [TAKEDA] prose > MAME's driver. **MAME is not a specification.**
+
