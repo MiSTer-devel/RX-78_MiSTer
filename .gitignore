@@ -41,3 +41,15 @@ c5_pin_model_dump.txt
 **/obj_dir
 **/.DS_Store
 verilator/obj_dir*
+
+# Hardware reference material is kept locally, not redistributed here. TODO.md
+# cites everything by URL; see its Sources section.
+docs/
+
+# Local reference checkout of MAME, used only to compare against src/mame/bandai/
+# rx78.cpp. Several GB. The snapshot that matters is vendored in docs/ref/mame/.
+mame/
+
+# Cartridge dumps and tape recordings used by vsim/run_tests.sh. Game images are
+# not ours to redistribute; keep them local.
+software/
