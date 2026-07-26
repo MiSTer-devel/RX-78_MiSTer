@@ -395,7 +395,17 @@ end
 
 
 
+// Which Z80 core. Synthesis always uses T80 (VHDL). Verilator normally uses
+// tv80 (Verilog) because ghdl is not in the build path -- but the two cores are
+// not interchangeable in practice, so USE_T80 lets a Verilator build run T80
+// instead, via ghdl-converted Verilog. See TODO.md T25.
 `ifdef VERILATOR
+ `ifndef USE_T80
+  `define USE_TV80
+ `endif
+`endif
+
+`ifdef USE_TV80
 
 tv80s cpu(
   .reset_n(~reset),
@@ -422,6 +432,11 @@ tv80s cpu(
 T80s T80s (
 	.RESET_n  ( ~reset   ),
 	.CLK      ( main_clk ),
+	// CEN and OUT0 have VHDL defaults ('1' and '0'), so leaving them
+	// unconnected works under Quartus -- but a Verilog translation of this core
+	// has no defaults and reads them as 0, which stops the CPU dead. Explicit.
+	.CEN      ( 1'b1     ),
+	.OUT0     ( 1'b0     ),
 	.WAIT_n   ( 1'b1     ),
 	.INT_n    ( ~zint    ),
 	.NMI_n    ( 1'b1     ),

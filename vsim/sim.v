@@ -92,6 +92,7 @@ module emu
 	output  [7:0] dbg_keys_or,   // OR of all 15 matrix rows (any key/joy down)
 	output        dbg_halt,      // CPU HALT_n (low = halted)
 	output        dbg_intack,    // Z80 interrupt acknowledge (~IORQ_n & ~M1_n)
+	output        dbg_m1,        // opcode fetch: M1_n low and not an INTACK
 	output [15:0] dbg_cpu_addr,
 
 	// I/O access strobes, for --trace-io
@@ -311,10 +312,17 @@ assign dbg_keys_or  = rx78.kb.keys[0]  | rx78.kb.keys[1]  | rx78.kb.keys[2]  |
                       rx78.kb.keys[6]  | rx78.kb.keys[7]  | rx78.kb.keys[8]  |
                       rx78.kb.keys[9]  | rx78.kb.keys[10] | rx78.kb.keys[11] |
                       rx78.kb.keys[12] | rx78.kb.keys[13] | rx78.kb.keys[14];
+`ifdef USE_T80
+assign dbg_halt     = 1'b1;      // not tapped on the T80 branch
+`else
 assign dbg_halt     = rx78.cpu.halt_n;
+`endif
 // rx78.v clears zint on this exact condition, so counting it tells us whether
 // the CPU is accepting interrupts at all (IFF) vs the core failing to assert.
 assign dbg_intack   = ~rx78.ziorq & ~rx78.zm1;
+// During an opcode fetch M1_n is low and the address bus carries PC. Excluding
+// the INTACK case (IORQ_n also low) leaves just instruction fetches.
+assign dbg_m1       = ~rx78.zm1 & rx78.ziorq;
 assign dbg_cpu_addr = rx78.zaddr;
 
 // rx78.v decodes I/O as io_en = ~IORQ_n & M1_n. WR_n gives an unambiguous
@@ -326,7 +334,11 @@ assign dbg_cpu_addr = rx78.zaddr;
 // tv80s). That branch is always the one the sim builds, so it is safe here,
 // but it does not exist in the T80 synthesis path.
 assign dbg_io_wr    = rx78.io_en & ~rx78.zwr;
+`ifdef USE_T80
+assign dbg_io_rd    = rx78.io_en & rx78.zwr;   // approximate; RD_n not tapped
+`else
 assign dbg_io_rd    = rx78.io_en & ~rx78.cpu.rd_n;
+`endif
 
 // The Z80 puts the full I/O address on the bus: {A, port} for `OUT (n),A` /
 // `IN A,(n)`, or {B, C} for the `(C)` forms. The high byte is therefore either

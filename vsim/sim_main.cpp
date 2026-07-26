@@ -85,6 +85,7 @@ static bool  opt_ext_ram = false;
 static bool  opt_pause   = false;
 static bool  opt_swap    = false;
 
+static bool  pc_profile     = false;
 static bool  trace_io       = false;
 static bool  trace_io_unknown_only = false;
 static FILE* trace_io_file  = nullptr;
@@ -382,6 +383,8 @@ static void print_usage(const char* argv0) {
 	printf("  --joy2 <frame>:<spec>     joined by '+': up down left right fire1 fire2\n");
 	printf("                            start, or 'none' to release.\n");
 	printf("\nTracing (see TODO.md T9/T10/T20):\n");
+	printf("  --pc-profile              Histogram of opcode-fetch addresses, to find\n");
+	printf("                            where a wedged CPU is spinning\n");
 	printf("  --trace-io [file]         Log every I/O port read/write\n");
 	printf("  --trace-io-unknown [file] Log only ports rx78.v does not decode\n");
 	printf("\nExamples:\n");
@@ -441,6 +444,7 @@ static int parse_args(int argc, char** argv) {
 		else if (a == "--ext-ram") opt_ext_ram = true;
 		else if (a == "--tape")      { const char* v = next(); if (v) tape_path = v; }
 		else if (a == "--tape-direct") tape_direct = true;
+		else if (a == "--pc-profile")  pc_profile = true;
 		else if (a == "--tape-play")   { tape_manual_play = true; tape.motor = true; }
 		else if (a == "--tape-no-auto") tape.autostart = false;
 		else if (a == "--tape-decimate") { const char* v = next(); if (v) tape_decimate = atoi(v); }
@@ -512,6 +516,9 @@ static long     stat_halt_cycles = 0;
 static long     stat_intacks = 0;
 static uint8_t  last_intack = 0;
 static long     stat_vb_rises = 0;
+// Histogram of opcode-fetch addresses, so "where is the CPU stuck" is answerable.
+static std::map<uint16_t,long> pc_hist;
+static uint8_t  last_m1 = 0;
 static uint8_t  last_vb = 0;
 
 static void print_run_stats() {
@@ -530,6 +537,8 @@ static void print_run_stats() {
 	printf("vblank edges      : %ld\n", stat_vb_rises);
 	printf("INT line at exit  : %d%s\n", top->dbg_int,
 	       top->dbg_int ? "   (asserted and never acknowledged)" : "");
+	printf("IRQ regs at exit  : vblank_irq_disabled=%d  irq_slow=%d  kb_cols=$%02x\n",
+	       top->dbg_irq_dis, top->dbg_irq_slow, top->dbg_kb_cols);
 	printf("I/O cycles        : %ld\n", stat_io_cycles);
 	printf("CPU addr range    : $%04x .. $%04x%s\n", addr_seen_lo, addr_seen_hi,
 	       (addr_seen_hi == 0 && addr_seen_lo == 0xffff) ? "  (CPU never ran!)" : "");
@@ -551,6 +560,28 @@ static void print_run_stats() {
 		if (!tape_direct)
 			printf("     parser        : pstate %d  hdr_addr %u  rate %u  data_start %u\n",
 			       top->tape_pstate, top->tape_hdr_addr, top->tape_rate, top->tape_data_start);
+	}
+	if (pc_profile && !pc_hist.empty()) {
+		std::vector<std::pair<long,uint16_t>> v;
+		for (auto& kv : pc_hist) v.push_back({kv.second, kv.first});
+		std::sort(v.rbegin(), v.rend());
+		long total = 0; for (auto& p : v) total += p.first;
+		printf("hot opcode fetches: (%ld total, %zu distinct addresses)\n", total, v.size());
+		for (size_t i = 0; i < v.size() && i < 12; i++)
+			printf("     $%04x  %8ld  %5.1f%%\n", v[i].second, v[i].first,
+			       100.0 * v[i].first / total);
+		// Split by region: it matters a great deal whether a wedged CPU is in
+		// the IPL ROM (waiting on a BIOS routine) or in cartridge code.
+		long rom = 0, cart = 0, ram = 0;
+		for (auto& kv : pc_hist) {
+			if      (kv.first < 0x2000) rom  += kv.second;
+			else if (kv.first < 0x6000) cart += kv.second;
+			else                        ram  += kv.second;
+		}
+		printf("     by region: ROM %ld  cart %ld  RAM %ld\n", rom, cart, ram);
+		FILE* pf = fopen("pc_profile.txt", "w");
+		if (pf) { for (auto& kv : pc_hist) fprintf(pf, "%04x %ld\n", kv.first, kv.second);
+		          fclose(pf); printf("     full histogram: pc_profile.txt\n"); }
 	}
 	printf("ports touched     :");
 	for (int p = 0; p < 256; p++) if (io_counts[p]) printf(" $%02x", p);
@@ -634,6 +665,8 @@ static void sim_cycle() {
 	// Liveness: always counted, cheap, and independent of --trace-io.
 	if (top->dbg_int && !last_int) stat_irq_rises++;
 	last_int = top->dbg_int;
+	if (pc_profile && top->dbg_m1 && !last_m1) pc_hist[top->dbg_cpu_addr]++;
+	last_m1 = top->dbg_m1;
 	if (top->dbg_intack && !last_intack) stat_intacks++;
 	last_intack = top->dbg_intack;
 	if (top->VGA_VB && !last_vb) stat_vb_rises++;

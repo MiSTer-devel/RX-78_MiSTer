@@ -568,6 +568,43 @@ Known limits: ~12 simulated frames/sec; no audio verification beyond a debug wav
 `shots-ref/` baseline is a record of *current* behaviour, not of correct behaviour — nine of the
 thirteen carts in it are wedged.
 
+## T25. The simulator and the hardware run different Z80 cores ⚠️
+
+**`vsim` has been testing a CPU the `.rbf` does not contain.** `rtl/rx78.v` picks the core with
+`` `ifdef VERILATOR ``: synthesis instantiates **T80** (VHDL, MikeJ/Daniel Wallner), Verilator
+instantiates **tv80** (Verilog, Guy Hutchison, 2004). tv80 is a **separate, independent
+implementation** — not a translation of T80 — so the two can and do differ. Any sim-only conclusion
+about CPU-sensitive behaviour is suspect until checked on the other core.
+
+(`files.qip` lists both `tv80/TV80.qip` and `T80/T80.qip`, but only `T80s` is instantiated outside
+Verilator, so tv80 is dead weight in the FPGA build.)
+
+**Why this surfaced:** Burger Shop (T24) works in MAME and not here, and the divergence looks
+CPU-shaped — MAME's Z80 sits in IPL ROM routines with `IFF1=1`, ours spins in cartridge code with
+`IFF1=0`. If tv80 mishandles something the game relies on, the shipped core may be fine and only the
+sim is wrong. That would match the report that Burger Shop used to run.
+
+**Attempted:** T80 converted to Verilog with `ghdl synth --out=verilog` and built into the sim with
+`make CPU=t80`. Two real problems were found and fixed on the way:
+
+- `T80.vhd:680` ANDs a 9-bit value with a 4-bit literal (`ioq and x"7"`). Quartus zero-extends
+  silently; ghdl rejects it. A latent width bug in the vendored core.
+- `rx78.v` left T80's **`CEN` and `OUT0` unconnected**. Those have VHDL defaults (`'1'`, `'0'`), so
+  Quartus is fine, but any Verilog translation reads them as 0 and `CEN=0` stops the CPU dead. Now
+  connected explicitly — worth doing regardless.
+
+**Where it stands:** the converted core now executes but immediately wedges in the low 128 bytes of
+ROM and issues no I/O at all, so the conversion is not yet faithful enough to draw conclusions from.
+`ghdl synth` is a synthesis flow; something about reset or initialisation is not surviving. **The
+hypothesis is untested, not disproved.**
+
+**The right way to settle it** is a Z80 conformance suite rather than a game: ZEXDOC/ZEXALL (Bird's
+instruction exerciser) or Patrik Rak's `z80test`, run against tv80 and T80 in the same testbench.
+They self-check and print a pass/fail line per instruction group, so they say *which* instruction
+differs instead of leaving us to infer it from a game hanging. They need a small harness to trap the
+CP/M console call and print it. Until then, treat `vsim` results on interrupt- and flag-sensitive
+code as indicative only.
+
 ## T24. Burger Shop and Perfect Mah-jongg still idle ❓
 
 After the T2/T3/T4/T5/T6/T7/T8/T13/T18 work, eleven of thirteen carts in `software/` run. These two

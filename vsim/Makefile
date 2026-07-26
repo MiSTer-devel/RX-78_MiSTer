@@ -72,8 +72,22 @@ EXE       = ./obj_dir/Vemu
 
 # Core RTL. rom.v does $readmemh("rom.mem"), so the sim must be run from this
 # directory -- see the rom.mem rule below.
+# CPU=t80 builds with the real (VHDL) T80 core instead of tv80, using a
+# ghdl-converted copy. Regenerate it with:
+#   ghdl -a --std=08 -fsynopsys ../rtl/T80/{T80_Pack,T80_ALU,T80_MCode,T80_Reg,T80,T80s}.vhd
+#   ghdl synth --std=08 -fsynopsys --out=verilog t80s > vsim/rtl/t80s_gen.v
+# One patch is needed first: T80.vhd:680 ANDs a 9-bit value with a 4-bit literal,
+# which Quartus zero-extends silently but ghdl rejects. Use "000000111".
+ifeq ($(CPU),t80)
+V_DEFINE += +define+USE_T80
+V_SRC_CPU = rtl/t80s_gen.v
+else
+V_SRC_CPU =
+endif
+
 V_SRC = \
 	sim.v \
+	$(V_SRC_CPU) \
 	rtl/sdram.sv \
 	$(RTL)/cassette.v \
 	$(RTL)/rx78.v \

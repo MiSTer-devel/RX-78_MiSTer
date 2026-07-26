@@ -8,5 +8,6 @@ imgui.ini
 shots/
 *.png
 *.log
+pc_profile.txt
 !shots-ref/
 !shots-ref/*.png

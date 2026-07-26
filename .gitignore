@@ -53,3 +53,7 @@ mame/
 # Cartridge dumps and tape recordings used by vsim/run_tests.sh. Game images are
 # not ours to redistribute; keep them local.
 software/
+
+# Stray local clone of the CSCP sources; the RX-78 subset is vendored in
+# docs/ref/emulators/cscp-rx78/.
+common-src-project/
