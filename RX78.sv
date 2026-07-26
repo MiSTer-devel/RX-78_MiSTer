@@ -178,7 +178,6 @@ assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
-assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;  
 
 assign VGA_F1 = 0;
@@ -205,6 +204,10 @@ localparam CONF_STR = {
 	"RX78;;",
 	"-;",
 	"F1,BIN,Load Cartridge;",
+	"F2,WAV,Load Tape;",
+	"-;",
+	"OG,Tape Sound,Off,On;",
+	"RH,Tape Rewind;",
 	"-;",
 	"OA,Swap Joysticks,Off,On;",
 	"OB,EXT RAM,Off,On;",
@@ -233,6 +236,7 @@ wire  [7:0] ioctl_index;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
+wire        ioctl_wait;
 
 
 hps_io #(.CONF_STR(CONF_STR)) hps_io
@@ -248,6 +252,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_dout),
 	.ioctl_index(ioctl_index),
+	.ioctl_wait(ioctl_wait),
 	
 	.joystick_0(joy1),
 	.joystick_1(joy2),
@@ -273,7 +278,13 @@ pll pll
 
 
 
-wire reset = RESET | status[0] | buttons[1] | ioctl_download;
+// A cartridge download resets the machine; mounting a tape must not, or the
+// monitor loses whatever it was doing. The SDRAM controller likewise must not be
+// re-initialised while an image is streaming into it.
+wire cart_download = ioctl_download && (ioctl_index == 8'd1);
+wire tape_download = ioctl_download && (ioctl_index == 8'd2);
+wire reset = RESET | status[0] | buttons[1] | cart_download;
+wire sdram_init = RESET | status[0] | buttons[1];
 
 //////////////////////////////////////////////////////////////////
 
@@ -286,13 +297,89 @@ wire [7:0] video;
 
 wire [10:0] sound;
 assign AUDIO_S = 1;
-assign AUDIO_L = { sound, 5'd0 };
-assign AUDIO_R = { sound, 5'd0 };
+// Tape monitoring, so a load is audible. MAME mixes the cassette in at 0.05;
+// a few LSBs of a signed 16-bit output is the same order of magnitude.
+wire signed [15:0] psg_out  = { sound, 5'd0 };
+wire signed [15:0] tape_mon = (status[16] && tape_motor) ? (tape_bit ? 16'sd700 : -16'sd700) : 16'sd0;
+assign AUDIO_L = psg_out + tape_mon;
+assign AUDIO_R = psg_out + tape_mon;
 assign AUDIO_MIX = 3;
 
 wire [31:0] rx78_joy1 = status[10] ? joy2 : joy1;
 wire [31:0] rx78_joy2 = status[10] ? joy1 : joy2;
 
+
+//////////////////////////   CASSETTE   //////////////////////////
+//
+// A tape is a plain WAV mounted over ioctl index 2 and streamed out of SDRAM by
+// rtl/cassette.v. See that file for why this streams audio rather than a
+// demodulated byte stream. TODO.md T1.
+
+wire [24:0] sdram_addr;
+wire [15:0] sdram_data;
+wire        sdram_rd;
+wire        sdram_ready;
+
+// The SDRAM controller detects requests on an EDGE. hps_io holds ioctl_wr high
+// for a whole transfer unless the core pushes back, so without this the
+// controller would see one write and only the first byte would land.
+assign ioctl_wait = tape_download & ~sdram_ready;
+
+sdram sdram_inst(
+	.init(sdram_init),
+	.clk(clk_sys),
+	.wtbt(2'b00),
+	.addr(tape_download ? ioctl_addr : sdram_addr),
+	.dout(sdram_data),
+	.din({8'd0, ioctl_dout}),
+	.we(tape_download & ioctl_wr),
+	.rd(sdram_rd),
+	.ready(sdram_ready),
+	.SDRAM_DQ(SDRAM_DQ),
+	.SDRAM_A(SDRAM_A),
+	.SDRAM_DQML(SDRAM_DQML),
+	.SDRAM_DQMH(SDRAM_DQMH),
+	.SDRAM_BA(SDRAM_BA),
+	.SDRAM_nCS(SDRAM_nCS),
+	.SDRAM_nWE(SDRAM_nWE),
+	.SDRAM_nRAS(SDRAM_nRAS),
+	.SDRAM_nCAS(SDRAM_nCAS),
+	.SDRAM_CKE(SDRAM_CKE),
+	.SDRAM_CLK(SDRAM_CLK)
+);
+
+// Latch the image size so the player knows where the tape ends, and rewind when
+// a new image finishes loading or the OSD asks.
+reg  [24:0] tape_size = 25'd0;
+reg         tape_rewind;
+reg         tape_dl_d;
+always @(posedge clk_sys) begin
+	tape_rewind <= 1'b0;
+	tape_dl_d   <= tape_download;
+	if (tape_download & ioctl_wr)    tape_size <= ioctl_addr + 25'd1;
+	if (tape_dl_d & ~tape_download)  tape_rewind <= 1'b1;   // download finished
+	if (status[17])                  tape_rewind <= 1'b1;   // "Tape Rewind"
+end
+
+wire tape_bit, tape_access, tape_out, tape_motor;
+
+cassette cassette(
+	.clk_sys(clk_sys),
+	.reset(RESET | status[0] | buttons[1]),
+	.clk_rate(32'd56000000),
+	.tape_access(tape_access),
+	.tape_rewind(tape_rewind),
+	.image_size(tape_size),
+	.sdram_addr(sdram_addr),
+	.sdram_data(sdram_data),
+	.sdram_rd(sdram_rd),
+	.sdram_ready(sdram_ready),
+	.tape_bit(tape_bit),
+	.motor(tape_motor),
+	.status(),
+	.play_pos(),
+	.play_len()
+);
 
 rx78 rx78(
 	.reset(reset),
@@ -317,6 +404,10 @@ rx78 rx78(
 	.ps2_key(ps2_key),
 	.joy1(rx78_joy1),
 	.joy2(rx78_joy2),
+
+	.tape_in(tape_bit),
+	.tape_out(tape_out),
+	.tape_access(tape_access),
 	
 	
 	.upload_index(ioctl_index),

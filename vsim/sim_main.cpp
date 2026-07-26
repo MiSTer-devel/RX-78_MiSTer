@@ -89,9 +89,102 @@ static bool  trace_io       = false;
 static bool  trace_io_unknown_only = false;
 static FILE* trace_io_file  = nullptr;
 
+//----------------------------------------------------------------------------
+// Cassette
+//
+// Plays a WAV straight into the core's tape_in at the file's own sample rate.
+// This deliberately bypasses whatever buffering the FPGA build ends up using:
+// the point is to validate the $f0 port and its polarity against the real
+// preserved dumps first, with nothing else in the way.
+//
+// The RX-78 has no motor control port, so the transport follows eRX-78's
+// heuristic: start on the first $f0 access, stop after a second with none.
+//----------------------------------------------------------------------------
+
+struct Tape {
+	std::vector<uint8_t> bits;      // 1 = waveform above threshold
+	long    rate      = 0;
+	double  pos       = 0.0;        // fractional sample index
+	bool    motor     = false;
+	bool    autostart = true;
+	long    idle      = 0;          // clk_sys cycles since last $f0 access
+	long    accesses  = 0;
+	bool    loaded() const { return !bits.empty(); }
+};
+static Tape tape;
+static std::string tape_path;
+static bool tape_manual_play = false;   // --tape-play: ignore the heuristic
+static bool tape_direct = false;        // --tape-direct: bypass SDRAM/cassette.v
+
+// Decimation applied when loading. This exists to size the FPGA buffer: storing
+// 1 bit per sample at 44.1 kHz costs 452 KB of BRAM for an 82-second tape, which
+// is more than is comfortably available. Decimating trades edge-timing
+// resolution for space -- at 2400 Hz (the higher FSK tone) a half-cycle is 208
+// us, which is 9.2 samples at 44.1 kHz, 4.6 at /2 and 2.3 at /4. Use
+// --tape-decimate to find the coarsest rate that still loads.
+static int tape_decimate = 1;
+
+// Minimal RIFF/WAVE reader. Handles 8-bit unsigned and 16-bit signed PCM, and
+// finds the data chunk rather than assuming a 44-byte header.
+static bool load_tape_wav(const std::string& path) {
+	FILE* f = fopen(path.c_str(), "rb");
+	if (!f) { printf("tape: cannot open %s\n", path.c_str()); return false; }
+	uint8_t hdr[12];
+	if (fread(hdr, 1, 12, f) != 12 || memcmp(hdr, "RIFF", 4) || memcmp(hdr + 8, "WAVE", 4)) {
+		printf("tape: %s is not a RIFF/WAVE file\n", path.c_str());
+		fclose(f); return false;
+	}
+	int channels = 1, bits_per_sample = 8;
+	long rate = 0;
+	while (true) {
+		uint8_t ch[8];
+		if (fread(ch, 1, 8, f) != 8) break;
+		uint32_t sz = ch[4] | (ch[5] << 8) | (ch[6] << 16) | ((uint32_t)ch[7] << 24);
+		if (!memcmp(ch, "fmt ", 4)) {
+			std::vector<uint8_t> fmt(sz);
+			if (fread(fmt.data(), 1, sz, f) != sz) break;
+			if (sz >= 16) {
+				channels        = fmt[2] | (fmt[3] << 8);
+				rate            = fmt[4] | (fmt[5] << 8) | (fmt[6] << 16) | ((long)fmt[7] << 24);
+				bits_per_sample = fmt[14] | (fmt[15] << 8);
+			}
+		}
+		else if (!memcmp(ch, "data", 4)) {
+			std::vector<uint8_t> d(sz);
+			size_t got = fread(d.data(), 1, sz, f);
+			d.resize(got);
+			const int stride = (bits_per_sample / 8) * channels;
+			if (stride <= 0) break;
+			tape.bits.reserve(got / stride / tape_decimate);
+			long n = 0;
+			for (size_t i = 0; i + stride <= got; i += stride) {
+				if (n++ % tape_decimate) continue;
+				// Threshold at the midpoint. MAME uses 0.03 of full scale; the
+				// difference does not matter for a signal this square.
+				bool hi = (bits_per_sample == 8) ? (d[i] >= 0x80)
+				                                 : ((int16_t)(d[i] | (d[i + 1] << 8)) >= 0);
+				tape.bits.push_back(hi ? 1 : 0);
+			}
+			break;
+		}
+		else {
+			if (fseek(f, (long)sz + (sz & 1), SEEK_CUR)) break;
+		}
+	}
+	fclose(f);
+	if (!rate || tape.bits.empty()) { printf("tape: no usable PCM in %s\n", path.c_str()); return false; }
+	tape.rate = rate / tape_decimate;
+	printf("tape: %s  %ld Hz  %d-bit  %d ch", path.c_str(), rate, bits_per_sample, channels);
+	if (tape_decimate > 1) printf("  decimated /%d -> %ld Hz", tape_decimate, tape.rate);
+	printf("  %zu samples  %.1f s  (%.0f KB at 1 bit/sample)\n",
+	       tape.bits.size(), (double)tape.bits.size() / tape.rate,
+	       tape.bits.size() / 8192.0);
+	return true;
+}
+
 // Ports rx78.v actually decodes. Anything else is "unknown" for --trace-io-unknown.
 static bool port_is_decoded(uint8_t p) {
-	return p == 0xf1 || p == 0xf2 || p == 0xf3 || p == 0xf4 ||
+	return p == 0xf0 || p == 0xf1 || p == 0xf2 || p == 0xf3 || p == 0xf4 ||
 	       (p >= 0xf5 && p <= 0xfa) || p == 0xfb || p == 0xfc ||
 	       p == 0xfe || p == 0xff;
 }
@@ -259,7 +352,17 @@ static void print_usage(const char* argv0) {
 	printf("Usage: %s [options]\n\n", argv0);
 	printf("Media:\n");
 	printf("  --cart <file.bin>         Load a cartridge image (ioctl index 1)\n");
-	printf("  --ext-ram                 Enable EXT RAM (required by 32K carts)\n");
+	printf("  --ext-ram                 Enable EXT RAM (16K vs 32K RAM machine)\n");
+	printf("  --tape <file.wav>         Mount a cassette WAV (ioctl -> SDRAM ->\n");
+	printf("                            rtl/cassette.v, the path that ships)\n");
+	printf("  --tape-direct             Drive $f0 straight from the file instead,\n");
+	printf("                            bypassing SDRAM and cassette.v. Use this to\n");
+	printf("                            tell a port problem from a loader problem.\n");
+	printf("  --tape-play               Run the tape continuously (ignore the motor\n");
+	printf("                            heuristic). Useful when a load stalls.\n");
+	printf("  --tape-no-auto            Do not auto-start the motor on $f0 access\n");
+	printf("  --tape-decimate <n>       Keep 1 sample in n when loading. Used to size\n");
+	printf("                            the FPGA buffer; see sim_main.cpp.\n");
 	printf("  --swap-joysticks          Swap joystick 1 and 2\n");
 	printf("\nRun control:\n");
 	printf("  --headless, --no-gui      No SDL window. Implied by HEADLESS=1.\n");
@@ -336,6 +439,11 @@ static int parse_args(int argc, char** argv) {
 		else if (a == "--headless" || a == "--no-gui") headless = true;
 		else if (a == "--cart")   { const char* v = next(); if (v) cart_path = v; }
 		else if (a == "--ext-ram") opt_ext_ram = true;
+		else if (a == "--tape")      { const char* v = next(); if (v) tape_path = v; }
+		else if (a == "--tape-direct") tape_direct = true;
+		else if (a == "--tape-play")   { tape_manual_play = true; tape.motor = true; }
+		else if (a == "--tape-no-auto") tape.autostart = false;
+		else if (a == "--tape-decimate") { const char* v = next(); if (v) tape_decimate = atoi(v); }
 		else if (a == "--swap-joysticks") opt_swap = true;
 		else if (a == "--key-hold")       { const char* v = next(); if (v) key_hold_frames = atoi(v); }
 		else if (a == "--stop-at-frame")  { const char* v = next(); if (v) stop_at_frame = atoi(v); }
@@ -429,6 +537,21 @@ static void print_run_stats() {
 	       stat_halt_cycles ? "YES - executed HALT (waiting for an interrupt)" : "no");
 	printf("kb matrix (any)   : $%02x%s\n", kb_rows_seen,
 	       kb_rows_seen ? "  (input reached the matrix)" : "  (no key/joy ever registered)");
+	if (!tape_path.empty()) {
+		if (tape_direct)
+			printf("tape (direct)     : %ld $f0 accesses, played %.1f s of %.1f s%s\n",
+			       tape.accesses, tape.rate ? tape.pos / tape.rate : 0.0,
+			       tape.rate ? (double)tape.bits.size() / tape.rate : 0.0,
+			       tape.accesses ? "" : "   <- the machine never touched $f0");
+		else
+			printf("tape (sdram)      : %ld $f0 accesses, sample %u of %u, motor %d, state %d%s\n",
+			       tape.accesses, top->tape_pos, top->tape_len, top->tape_motor,
+			       top->tape_status,
+			       (top->tape_status == 11) ? "   <- S_BAD: header not understood" : "");
+		if (!tape_direct)
+			printf("     parser        : pstate %d  hdr_addr %u  rate %u  data_start %u\n",
+			       top->tape_pstate, top->tape_hdr_addr, top->tape_rate, top->tape_data_start);
+	}
 	printf("ports touched     :");
 	for (int p = 0; p < 256; p++) if (io_counts[p]) printf(" $%02x", p);
 	printf("\n");
@@ -475,6 +598,26 @@ static void sim_cycle() {
 	bus.BeforeEval();
 	input.BeforeEval();
 
+	// --- cassette transport ------------------------------------------
+	if (top->tape_access) tape.accesses++;
+	if (tape.loaded()) {
+		if (top->tape_access) { tape.idle = 0;
+		                        if (tape.autostart) tape.motor = true; }
+		else if (tape.motor && !tape_manual_play) {
+			// eRX-78 stops the motor after one second with no access.
+			if (++tape.idle > CLK_SYS_HZ) { tape.motor = false; tape.idle = 0; }
+		}
+		if (tape.motor) {
+			tape.pos += (double)tape.rate / (double)CLK_SYS_HZ;
+			if (tape.pos >= (double)tape.bits.size()) { tape.pos = (double)tape.bits.size(); tape.motor = false; }
+		}
+		size_t idx = (size_t)tape.pos;
+		top->tape_in_direct = (idx < tape.bits.size()) ? tape.bits[idx] : 0;
+	} else {
+		top->tape_in_direct = 0;
+	}
+
+	top->tape_direct = tape_direct;
 	top->joystick_0 = joy_state[0];
 	top->joystick_1 = joy_state[1];
 	top->ext_ram    = opt_ext_ram;
@@ -657,12 +800,23 @@ int main(int argc, char** argv, char** env) {
 	bus.ioctl_dout     = &top->ioctl_dout;
 	input.ps2_key      = &top->ps2_key;
 
+	if (!tape_path.empty()) {
+		// The direct path still needs the samples decoded in C++; the real path
+		// only needs the file streamed in over ioctl, exactly as hps_io does.
+		if (tape_direct) load_tape_wav(tape_path);
+		else             printf("Mounting tape over ioctl index 2: %s\n", tape_path.c_str());
+	}
+
 	if (!cart_path.empty()) {
 		// CONF_STR "F1,BIN,Load Cartridge" -> ioctl_index 1, which is what
 		// rtl/rx78.v checks with (upload_index==1).
 		printf("Loading cartridge: %s\n", cart_path.c_str());
 		bus.QueueDownload(cart_path, 1, true);
 	}
+
+	// Index 2 == "F2,WAV". Queued after the cart so the cart reset completes
+	// first; SimBus runs them back to back.
+	if (!tape_path.empty() && !tape_direct) bus.QueueDownload(tape_path, 2, true);
 
 	for (const KeyAction& a : key_actions) schedule_key_action(a);
 	// SimInput drains its queue on a cycle timer; keep it short so a whole

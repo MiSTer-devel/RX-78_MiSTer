@@ -74,6 +74,8 @@ EXE       = ./obj_dir/Vemu
 # directory -- see the rom.mem rule below.
 V_SRC = \
 	sim.v \
+	rtl/sdram.sv \
+	$(RTL)/cassette.v \
 	$(RTL)/rx78.v \
 	$(RTL)/vdp.v \
 	$(RTL)/video.v \

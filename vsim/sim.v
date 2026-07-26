@@ -32,6 +32,23 @@ module emu
 	// [7:0] scancode, [8] extended, [9] pressed, [10] toggles per event
 	input  [10:0] ps2_key,
 
+	// Cassette. Two paths: the real one loads a WAV into SDRAM over ioctl and
+	// plays it with rtl/cassette.v (what ships), and tape_in_direct lets
+	// sim_main drive the bit straight from a file, which is how the $f0 port and
+	// its polarity were validated in the first place. tape_direct picks.
+	input         tape_in_direct,
+	input         tape_direct,
+	output        tape_out,
+	output        tape_access,
+	output [31:0] tape_pos,
+	output [31:0] tape_len,
+	output  [3:0] tape_status,
+	output        tape_motor,
+	output  [2:0] tape_pstate,
+	output [24:0] tape_hdr_addr,
+	output [31:0] tape_rate,
+	output [24:0] tape_data_start,
+
 	// HPS ioctl download (cartridge upload). index 1 == "F1,BIN" in CONF_STR.
 	input         ioctl_download,
 	input         ioctl_wr,
@@ -85,7 +102,12 @@ module emu
 	output  [7:0] dbg_io_data
 );
 
-assign ioctl_wait = 1'b0;   // the core accepts writes every cycle
+// The cartridge path accepts a write every cycle, but the tape path goes
+// through the SDRAM controller, which detects requests on an EDGE. Without
+// back-pressure hps_io/SimBus holds ioctl_wr high for the whole transfer, the
+// controller sees a single write, and only the first byte lands. Throttling on
+// sdram_ready is what makes ioctl_wr re-strobe per byte.
+assign ioctl_wait = tape_download & ~sdram_ready;
 
 //////////////////////////////////////////////////////////////////
 // Clocks
@@ -172,6 +194,10 @@ rx78 rx78
 	.joy1      ( rx78_joy1      ),
 	.joy2      ( rx78_joy2      ),
 
+	.tape_in     ( tape_direct ? tape_in_direct : cas_bit ),
+	.tape_out    ( tape_out    ),
+	.tape_access ( tape_access ),
+
 	.upload_index ( ioctl_index ),
 	.upload_addr  ( ioctl_addr  ),
 	.upload_data  ( ioctl_dout  ),
@@ -192,6 +218,70 @@ assign VGA_DE = ~(hb | vb);
 // RX78.sv: AUDIO_L/R = { sound, 5'd0 }, AUDIO_S = 1 (signed)
 assign AUDIO_L = { sound, 5'd0 };
 assign AUDIO_R = { sound, 5'd0 };
+
+//////////////////////////////////////////////////////////////////
+// Cassette: ioctl -> SDRAM -> player
+//
+// Same shape as the synthesis top level, so what the sim exercises is the path
+// that ships. The SDRAM here is the behavioural model in vsim/rtl/sdram.sv,
+// which keeps the real controller's edge-detected requests and read latency.
+//////////////////////////////////////////////////////////////////
+
+wire [24:0] sdram_addr;
+wire [15:0] sdram_data;
+wire        sdram_rd;
+wire        sdram_ready;
+wire        cas_bit;
+
+// ioctl index 2 == "F2,WAV" in CONF_STR.
+wire tape_download = ioctl_download && (ioctl_index == 8'd2);
+
+sdram sdram_inst (
+	.init  ( 1'b0 ),
+	.clk   ( clk_sys ),
+	.wtbt  ( 2'b00 ),
+	.addr  ( tape_download ? ioctl_addr : sdram_addr ),
+	.dout  ( sdram_data ),
+	.din   ( {8'd0, ioctl_dout} ),
+	.we    ( tape_download & ioctl_wr ),
+	.rd    ( sdram_rd ),
+	.ready ( sdram_ready )
+);
+
+// Latch the image size so the player knows where the tape ends, and pulse
+// rewind when a new one finishes loading.
+reg [24:0] tape_size = 25'd0;
+reg        tape_rewind;
+reg        tape_dl_d;
+always @(posedge clk_sys) begin
+	tape_rewind <= 1'b0;
+	tape_dl_d   <= tape_download;
+	if (tape_download & ioctl_wr) tape_size <= ioctl_addr + 25'd1;
+	if (tape_dl_d & ~tape_download) tape_rewind <= 1'b1;   // download finished
+end
+
+cassette cassette (
+	.clk_sys     ( clk_sys      ),
+	.reset       ( reset & ~tape_download ),
+	.clk_rate    ( 32'd56000000 ),
+	.tape_access ( tape_access  ),
+	.tape_rewind ( tape_rewind  ),
+	.image_size  ( tape_size    ),
+	.sdram_addr  ( sdram_addr   ),
+	.sdram_data  ( sdram_data   ),
+	.sdram_rd    ( sdram_rd     ),
+	.sdram_ready ( sdram_ready  ),
+	.tape_bit    ( cas_bit      ),
+	.motor       ( tape_motor   ),
+	.status      ( tape_status  ),
+	.play_pos    ( tape_pos     ),
+	.play_len    ( tape_len     )
+);
+
+assign tape_pstate     = cassette.pstate;
+assign tape_hdr_addr   = cassette.hdr_addr;
+assign tape_rate       = cassette.wav_rate;
+assign tape_data_start = cassette.data_start;
 
 //////////////////////////////////////////////////////////////////
 // Debug taps (hierarchical reads -- observation only)

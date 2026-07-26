@@ -62,6 +62,8 @@ CPU/video phase relationship the core actually depends on.
 | `--screenshot <n,...>` | PNG per listed frame. |
 | `--screenshot-name <path>` | Exact path, for scripting. |
 | `--stop-at-frame <n>` | Required for headless runs; otherwise it stops at 100000 frames. |
+| `--tape <file.wav>` | Mounts a cassette over ioctl index 2 into SDRAM, played by `rtl/cassette.v` — the path that ships. Needs the BS-BASIC cart. |
+| `--tape-direct` | Drives `$f0` straight from the file instead, bypassing SDRAM and `cassette.v`. Tells a port problem apart from a loader problem. |
 | `--trace-io [file]` | Every I/O read/write with the port, data and bus value. |
 | `--trace-io-unknown [file]` | Only ports `rtl/rx78.v` does not decode. |
 
@@ -101,6 +103,28 @@ How to read it:
   is `$00` after a `--key`, the injection is broken; if it is non-zero and the
   game still does nothing, the game isn't reading it.
 - **`UNDECODED ports`** is a standing report against TODO T20.
+
+## Tape
+
+```sh
+./tape_test.sh              # Yellow Cab, 44100 Hz, ~8 min
+./tape_test.sh graphmaths   # Graphics Mathematics, 22050 Hz, ~10 min
+TAPE_DIRECT=1 ./tape_test.sh
+```
+
+Separate from `run_tests.sh` because a tape plays in real time: 82 seconds of audio is ~4900 frames
+at ~12 frames/second. Both preserved dumps load and run.
+
+The run stats grow a tape line showing `$f0` accesses, position, motor state and the parsed header:
+
+```
+tape (sdram)      : 4625684 $f0 accesses, sample 3537583 of 3613696, motor 0, state 5
+     parser        : pstate 4  hdr_addr 45  rate 44100  data_start 44
+```
+
+`state 11` is `S_BAD` — `cassette.v` could not parse the header. The player stopping short of the
+end is normal: the motor is inferred from `$f0` activity, so it stops once the loaded program takes
+over and stops reading.
 
 ## Regression sweep
 

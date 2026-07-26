@@ -29,11 +29,22 @@ Items marked **measured** were checked by running the core in `vsim/` — see T2
 
 # Tier 1 — Confirmed wrong, fix with confidence
 
-## T1. Cassette / tape support — missing entirely ✅
+## T1. Cassette / tape support — **IMPLEMENTED** ✅
 
-**Status:** no tape path exists anywhere in the core. `rtl/rx78.v` decodes `$f1,$f2,$f3,$f4,$f5-$fa,
-$fb,$fc,$fe,$ff` and has **no `$f0` case at all**, so reads fall through to the `io_q` default of
-`8'hff`. A monitor `*L` hangs forever. `RX78.sv` has no OSD entry to mount a tape.
+**Status: done, and verified against both preserved dumps.** Yellow Cab loads from
+`yellowcab.wav` through the BS-BASIC monitor and auto-runs; Graphics Mathematics loads from a
+22050 Hz image. Reproduce with `cd vsim && ./tape_test.sh`.
+
+What was built:
+- `rtl/rx78.v` decodes `$f0` — read returns `~tape_in` in bit 0, write latches `~zdo[0]` — plus a
+  `tape_access` strobe, since there is no motor control port.
+- `rtl/cassette.v` streams the waveform out of SDRAM: walks the RIFF chunks for rate/format/data
+  offset, thresholds each sample, and clocks it with a phase accumulator (no divider).
+- `RX78.sv` brings up the SDRAM controller (it was tied off), mounts a WAV over ioctl index 2,
+  latches the image size, rewinds on mount, and mixes the tape into the audio so a load is audible.
+- OSD: `F2,WAV,Load Tape`, `Tape Sound`, `Tape Rewind`.
+
+**Original analysis follows** — it is what the implementation was built from.
 
 **Provenance:** all three implementations agree the port exists and what it does.
 - Hardware doc: `$f0 R/W — データレコーダ (data recorder), bit0: signal input/output`.
@@ -62,19 +73,26 @@ the OSD too, since it is a heuristic and not hardware.
 
 **Media format**, measured from `software/yellowcab.zip` (the real dump):
 
-- 8-bit unsigned mono WAV, 44100 Hz, 81.9 s, 3,613,696 samples. `graphmaths.wav` is ~53 s.
+- Measured across the whole archive: Yellow Cab Side A/B and the MAME software-list `yellowcab.wav`
+  are 8-bit mono PCM at **44100 Hz** (81.9 s / 3.61 MB); `graphmaths.wav` is 8-bit mono at
+  **22050 Hz** (106.4 s / 2.35 MB). **The rate is not constant**, so it has to come from the header
+  rather than be assumed — which is why `cassette.v` parses the chunks.
 - Signal is FSK with two tone groups: **~1200 Hz and ~2400 Hz** (half-period histogram peaks at
   18-20 and 8-11 samples). This is Kansas-City-Standard-shaped.
 - Because the highest tone is 2400 Hz, the waveform can be decimated hard before it reaches the FPGA.
-  1 bit/sample at 11.025 kHz keeps ~4.6 samples per half-cycle at 2400 Hz and costs **110 KB** for
-  Yellow Cab. That fits in BRAM for these two dumps but not for a 5-minute tape (~413 KB).
-  SDRAM or DDR gives headroom; note both are currently tied off in `RX78.sv:181-182`.
+  Decimation was considered to fit a BRAM buffer and then dropped: SDRAM was unused, and 3.6 MB in a
+  32 MB part removes the size limit and the resolution compromise together. The image is stored as
+  the raw WAV, thresholded on the fly.
 
-**Also needed:**
-- Route tape audio to the speaker so loading is audible (MAME mixes it at 0.05).
-- Loading is aborted with BREAK = STOP+SHIFT. **The core currently cannot send STOP alone** —
-  `keyboard.sv:184` maps ESC to STOP *and* SHIFT together. Fine for BREAK, but see T19.
-- `*S` (save to tape) needs the write direction and a sink the HPS can capture, if round-trips matter.
+**Still outstanding:**
+- **Save to tape (`*S`).** `tape_out` is decoded and latched but goes nowhere. Writing needs a sink
+  the HPS can capture — either `ioctl_upload` or the SD block interface, which `hps_io.sv` supports.
+- **Real tape via the ADC.** Bandai's manual and T1's notes both want it; BasicMasterJr wires an
+  `adc_cassette_bit` for this and is the obvious model.
+- **Explicit transport control.** Play/Stop are inferred from `$f0` activity (eRX-78's heuristic).
+  Only Rewind is exposed. Fine so far, but a stuck load has no manual override.
+- `keyboard.sv` still cannot send STOP without SHIFT, so BREAK works but STOP alone does not — see
+  T19. That is how a tape load is meant to be aborted.
 
 ## T2. CPU and sound clocks — **FIXED** ✅
 
@@ -560,13 +578,24 @@ still sit on their title screens doing almost no I/O:
 | burgershop | 0.01 | 444 |
 | mahjong | 0.00 | 2408–3107 |
 
-Both draw a correct title screen and then go quiet, so the CPU is executing but not polling. Burger
-Shop's screen says "CLOSED", which may be an attract state rather than a fault.
+**It is not an input problem.** The controls `readme.md` documents for both games (Burger Shop: "Z
+and X to start"; Mah-jongg: "Space to start", Home/Backspace for the questions) were tried
+repeatedly across a range of frames and change nothing. The machine is not listening:
 
-Neither has been diagnosed. Start with `--trace-io` and look at what they do with `$f4` and `$f3`
-before going silent; both write `$23` and `$ef` at boot like every other cart. Note that the input
-window for these may simply be somewhere the sweep does not press — see the Super Motocross note in
-T2 before concluding the core is at fault.
+```
+Burger Shop    INT rises 3    INT acks 2    I/O cycles 444    last I/O at frame 9
+Mah-jongg      INT rises 4    INT acks 1    I/O cycles 4128
+```
+
+Both **enable** the vblank interrupt (`$f4 <- $08`, bit 4 clear) and set `$f3` to the every-frame
+rate, so the core asserts the interrupt each frame — but the CPU acknowledges once or twice and then
+never again, which means it is spinning with interrupts disabled. Burger Shop's last act is three
+writes to `$ff` silencing the PSG, at frame 9, after which it does no I/O at all.
+
+So the CPU is stuck in a `DI` loop a few frames after boot, waiting on something that never happens.
+Candidates, roughly in order: a `$fd` write being ignored (Burger Shop does not write `$fd`, but
+Mah-jongg's sibling titles do), the `$f3` divider semantics (T10), or a genuine CPU-core bug that
+only these two provoke. The IPL disassembly (R1) would help.
 
 ---
 

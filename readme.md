@@ -6,8 +6,6 @@ I would like to thank Reenthused (Johnny Blanchard) and Hubz (Dustin Hubbard) fo
 
 ## About the core
 
-There's no cassette support yet.
-
 32k cartridges are detected automatically — you no longer need to enable EXT RAM for them.
 
 There is a Verilator simulation in `vsim/` that boots a cartridge, injects keys and joystick input,
@@ -19,17 +17,62 @@ Accuracy work is tracked in `TODO.md`, with the source documents it is based on 
 emulators disagree with each other and MAME is not a specification.
 
 To do list:
-- Add cassette support and ADC in.
+- Save to tape (`*S`) and real tape in via the ADC.
 - Work out what ports $23, $ef and $fd do (every cartridge writes $23 and $ef at boot; four write $fd).
 - Add game identification mechanism to support for different joystick mappings.
 - VGA output works but hsync timing seems wrong.
 
+
+## Cassettes
+
+Tapes work. The preserved `.wav` dumps load as-is — no conversion step.
+
+**The cassette interface is on the BS-BASIC cartridge, not in the machine**, so you always need
+BS-BASIC loaded to use a tape. That is also why every cassette title in MAME's software list depends
+on it.
+
+1. **Load Cartridge** → `bs-basic.bin`
+2. **Load Tape** → the `.wav`
+3. Type the commands below. Press Return after each line.
+
+The tape starts and stops itself by watching the cassette port, so there is no Play button. Use
+**Tape Rewind** to start a load over, and turn on **Tape Sound** if you want to hear it running.
+A load takes as long as the tape does — about a minute and a half.
+
+### Yellow Cab
+
+```
+MON
+L
+CAB
+```
+
+Loads and starts by itself when the tape finishes.
+
+### Graphics Mathematics
+
+```
+MON
+L
+GRM
+```
+
+When the tape finishes, type `RUN` and press Return.
+
+Notes: `MON` enters the monitor from BASIC and gives you a `*` prompt. `L` is the monitor's load
+command, which asks `FILE NAME:` — that is where the name goes. To abort a load, press BREAK
+(STOP + SHIFT). Monitor commands `V` (verify) and `S` (save) are not usable yet: saving needs a
+write path that does not exist (see `TODO.md` T1).
 
 ## Games
 
 
 ### Burger Shop
   Z and X to start and move; Space to pick up and put down
+
+  **Currently broken** — the title screen draws and the machine then stops responding, so the
+  controls above do not get you in. Not an input problem: the CPU stops acknowledging interrupts
+  about ten frames after boot. See `TODO.md` T24.
 
 
 
@@ -45,10 +88,13 @@ To do list:
 ### Mobile Suit Gundam
   Use either Z,X,Space; or Left,Right,Alt or Joystick
 
-  This game has an audio bug on the title screen.
+  Press a key at the title screen to reach the score table, then again to start.
 
 ### Perfect Mah-jongg
   Home = Yes; Backspace = No;Q4 = - or 9; Q5 = \ or pgDn or PgUp; Space to start
+
+  **Currently broken** — same symptom as Burger Shop: the title draws, then the CPU stops taking
+  interrupts and none of the keys above register. See `TODO.md` T24.
 
 ### Sekigahara
    Wait for small beep. Press Space(keyboard) or S(joystick). Press G.

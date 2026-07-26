@@ -33,6 +33,22 @@ module rx78(
   input [31:0] joy1,
   input [31:0] joy2,
 
+  // Cassette ("data recorder"), port $f0 bit 0. Physically this interface lives
+  // on the BS-BASIC cartridge rather than in the main unit, which is why every
+  // cassette title requires that cart. See TODO.md T1.
+  //
+  // Polarity follows MAME, which is the only behaviour in this whole comparison
+  // validated against real media: commit 06b26a0f55a, "fixed loading of real
+  // tapes", inverted both directions to make the preserved WAV dumps load.
+  //   tape_in  - 1 when the incoming waveform is above the threshold
+  //   tape_out - level to record; 1 = positive
+  input  tape_in,
+  output reg tape_out,
+  // Pulses for one clk on any $f0 access. There is no motor control port on
+  // this machine, so the top level uses this to drive the tape transport the
+  // way eRX-78 does: start on first access, stop after ~1s of silence.
+  output tape_access,
+
   output [8:0] h,
   output [8:0] v,
   output hs,
@@ -104,6 +120,12 @@ always @(posedge clk) begin
     case (zaddr[7:0])
       //8'h23: ?
       //8'hef: ?
+      8'hf0:
+        // MAME: cass_w outputs -1.0 when bit0 is set, and cass_r returns 0 when
+        // the input is above the threshold -- inverted in both directions.
+        // Both emulators read back 0 in bits 7:1.
+        if (~zwr) tape_out <= ~zdo[0];
+        else      io_q <= {7'd0, ~tape_in};
       8'hf1: if (~zwr) vram_rd_bank <= zdo;
       8'hf2: if (~zwr) vram_wr_bank <= zdo;
       8'hf3:
@@ -138,8 +160,15 @@ always @(posedge clk) begin
     mask <= 8'd0;
     cmask <= 8'd0;
     irq_slow <= 6'd0;
+    tape_out <= 1'b0;
   end
 end
+
+// One-shot on any $f0 access, for the motor heuristic in the top level.
+wire tape_io = io_en && (zaddr[7:0] == 8'hf0);
+reg  tape_io_d;
+always @(posedge clk) tape_io_d <= tape_io;
+assign tape_access = tape_io & ~tape_io_d;
 
 // 8k rom
 rom rom(
